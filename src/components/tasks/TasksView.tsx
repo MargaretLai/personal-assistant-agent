@@ -1,4 +1,4 @@
-// src/components/tasks/TasksView.tsx
+// Update the imports in src/components/tasks/TasksView.tsx
 import React, { useState } from "react";
 import {
   Box,
@@ -14,6 +14,15 @@ import {
   Tab,
   IconButton,
   LinearProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Select,
 } from "@mui/material";
 import { Task } from "../../types";
 import { mockTasks } from "../../services/mockData";
@@ -21,10 +30,59 @@ import AddIcon from "@mui/icons-material/Add";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 import DeleteIcon from "@mui/icons-material/Delete";
+import TaskAltIcon from "@mui/icons-material/TaskAlt";
 
 const TasksView: React.FC = () => {
   const [tasks, setTasks] = useState(mockTasks);
   const [activeTab, setActiveTab] = useState(0);
+  const [showNewTaskDialog, setShowNewTaskDialog] = useState(false);
+  const [newTask, setNewTask] = useState({
+    title: "",
+    description: "",
+    priority: "medium" as "high" | "medium" | "low",
+    dueDate: "",
+  });
+
+  // ... keep all existing functions (getPriorityColor, formatDueDate, handleTaskComplete, getFilteredTasks) ...
+
+  const handleNewTask = () => {
+    setShowNewTaskDialog(true);
+  };
+
+  const handleSaveNewTask = () => {
+    if (newTask.title.trim()) {
+      const createdTask: Task = {
+        id: Date.now().toString(),
+        title: newTask.title,
+        description: newTask.description || undefined,
+        priority: newTask.priority,
+        completed: false,
+        dueDate: newTask.dueDate ? new Date(newTask.dueDate) : undefined,
+      };
+
+      setTasks((prev) => [...prev, createdTask]);
+      setShowNewTaskDialog(false);
+
+      // Reset form
+      setNewTask({
+        title: "",
+        description: "",
+        priority: "medium",
+        dueDate: "",
+      });
+    }
+  };
+
+  const handleCancelNewTask = () => {
+    setShowNewTaskDialog(false);
+    setNewTask({
+      title: "",
+      description: "",
+      priority: "medium",
+      dueDate: "",
+    });
+  };
+  // Add these missing function implementations at the beginning of the component, after the state declarations:
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -77,7 +135,6 @@ const TasksView: React.FC = () => {
         return tasks;
     }
   };
-
   const completionRate = Math.round(
     (tasks.filter((task) => task.completed).length / tasks.length) * 100
   );
@@ -104,6 +161,7 @@ const TasksView: React.FC = () => {
         <Button
           variant="contained"
           startIcon={<AddIcon />}
+          onClick={handleNewTask}
           sx={{
             background: "linear-gradient(135deg, #00d4ff 0%, #0095cc 100%)",
             "&:hover": {
@@ -115,7 +173,7 @@ const TasksView: React.FC = () => {
         </Button>
       </Box>
 
-      {/* Progress Overview */}
+      {/* Progress Overview - keep existing code */}
       <Paper
         elevation={2}
         sx={{
@@ -148,7 +206,7 @@ const TasksView: React.FC = () => {
         />
       </Paper>
 
-      {/* Filter Tabs */}
+      {/* Filter Tabs - keep existing code */}
       <Paper elevation={2} sx={{ mb: 3 }}>
         <Tabs
           value={activeTab}
@@ -181,7 +239,7 @@ const TasksView: React.FC = () => {
         </Tabs>
       </Paper>
 
-      {/* Tasks List */}
+      {/* Tasks List - keep existing code */}
       <Paper
         elevation={2}
         sx={{ background: "linear-gradient(145deg, #1a1f35 0%, #242b42 100%)" }}
@@ -274,6 +332,87 @@ const TasksView: React.FC = () => {
           ))}
         </List>
       </Paper>
+
+      {/* New Task Dialog */}
+      <Dialog
+        open={showNewTaskDialog}
+        onClose={handleCancelNewTask}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <TaskAltIcon color="primary" />
+            <Typography variant="h6">Create New Task</Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
+            <TextField
+              fullWidth
+              label="Task Title"
+              value={newTask.title}
+              onChange={(e) =>
+                setNewTask((prev) => ({ ...prev, title: e.target.value }))
+              }
+              required
+            />
+
+            <TextField
+              fullWidth
+              label="Description"
+              multiline
+              rows={3}
+              value={newTask.description}
+              onChange={(e) =>
+                setNewTask((prev) => ({ ...prev, description: e.target.value }))
+              }
+            />
+
+            <FormControl fullWidth>
+              <InputLabel>Priority</InputLabel>
+              <Select
+                value={newTask.priority}
+                label="Priority"
+                onChange={(e) =>
+                  setNewTask((prev) => ({
+                    ...prev,
+                    priority: e.target.value as "high" | "medium" | "low",
+                  }))
+                }
+              >
+                <MenuItem value="low">🟢 Low</MenuItem>
+                <MenuItem value="medium">🟡 Medium</MenuItem>
+                <MenuItem value="high">🔴 High</MenuItem>
+              </Select>
+            </FormControl>
+
+            <TextField
+              fullWidth
+              label="Due Date"
+              type="date"
+              value={newTask.dueDate}
+              onChange={(e) =>
+                setNewTask((prev) => ({ ...prev, dueDate: e.target.value }))
+              }
+              InputLabelProps={{ shrink: true }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={handleCancelNewTask}>Cancel</Button>
+          <Button
+            onClick={handleSaveNewTask}
+            variant="contained"
+            disabled={!newTask.title.trim()}
+            sx={{
+              background: "linear-gradient(135deg, #00d4ff 0%, #0095cc 100%)",
+            }}
+          >
+            Create Task
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
