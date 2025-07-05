@@ -1,17 +1,18 @@
 // src/App.tsx
-import React from 'react';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import { Container, Typography, Box } from '@mui/material';
+import React from "react";
+import { ThemeProvider, createTheme } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
+import MainLayout from "./components/layout/MainLayout";
+import ChatInterface from "./components/chat/ChatInterface";
 
 const theme = createTheme({
   palette: {
-    mode: 'light',
+    mode: "light",
     primary: {
-      main: '#1976d2',
+      main: "#1976d2",
     },
     secondary: {
-      main: '#dc004e',
+      main: "#dc004e",
     },
   },
 });
@@ -20,16 +21,9 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Container maxWidth="lg">
-        <Box sx={{ py: 4 }}>
-          <Typography variant="h3" component="h1" gutterBottom>
-            Personal Assistant Agent
-          </Typography>
-          <Typography variant="h6" color="text.secondary">
-            Your AI-powered productivity companion
-          </Typography>
-        </Box>
-      </Container>
+      <MainLayout>
+        <ChatInterface />
+      </MainLayout>
     </ThemeProvider>
   );
 }
