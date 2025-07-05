@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  TextField,
 } from '@mui/material';
 import { CalendarEvent } from '../../types';
 import { mockCalendarEvents } from '../../services/mockData';
@@ -20,8 +21,17 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import EventIcon from '@mui/icons-material/Event';
 
 const CalendarView: React.FC = () => {
-  const [events] = useState(mockCalendarEvents);
+  const [events, setEvents] = useState(mockCalendarEvents);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [showNewEventDialog, setShowNewEventDialog] = useState(false);
+  const [newEvent, setNewEvent] = useState({
+    title: '',
+    description: '',
+    location: '',
+    date: new Date().toISOString().split('T')[0], // Today's date
+    startTime: '09:00',
+    endTime: '10:00',
+  });
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', { 
@@ -63,6 +73,51 @@ const CalendarView: React.FC = () => {
     return grouped;
   };
 
+  const handleNewEvent = () => {
+    setShowNewEventDialog(true);
+  };
+
+  const handleSaveNewEvent = () => {
+    if (newEvent.title.trim()) {
+      const startDateTime = new Date(`${newEvent.date}T${newEvent.startTime}`);
+      const endDateTime = new Date(`${newEvent.date}T${newEvent.endTime}`);
+      
+      const createdEvent: CalendarEvent = {
+        id: Date.now().toString(),
+        title: newEvent.title,
+        start: startDateTime,
+        end: endDateTime,
+        description: newEvent.description || undefined,
+        location: newEvent.location || undefined,
+      };
+      
+      setEvents(prev => [...prev, createdEvent]);
+      setShowNewEventDialog(false);
+      
+      // Reset form
+      setNewEvent({
+        title: '',
+        description: '',
+        location: '',
+        date: new Date().toISOString().split('T')[0],
+        startTime: '09:00',
+        endTime: '10:00',
+      });
+    }
+  };
+
+  const handleCancelNewEvent = () => {
+    setShowNewEventDialog(false);
+    setNewEvent({
+      title: '',
+      description: '',
+      location: '',
+      date: new Date().toISOString().split('T')[0],
+      startTime: '09:00',
+      endTime: '10:00',
+    });
+  };
+
   const groupedEvents = groupEventsByDate(events);
 
   return (
@@ -80,6 +135,7 @@ const CalendarView: React.FC = () => {
         <Button
           variant="contained"
           startIcon={<AddIcon />}
+          onClick={handleNewEvent}
           sx={{
             background: 'linear-gradient(135deg, #00d4ff 0%, #0095cc 100%)',
             '&:hover': {
@@ -91,7 +147,7 @@ const CalendarView: React.FC = () => {
         </Button>
       </Box>
 
-      {/* Calendar Grid - Using Flexbox instead of Material-UI Grid */}
+      {/* Calendar Grid */}
       <Box
         sx={{
           display: 'grid',
@@ -160,6 +216,85 @@ const CalendarView: React.FC = () => {
           </Paper>
         ))}
       </Box>
+
+      {/* New Event Dialog */}
+      <Dialog open={showNewEventDialog} onClose={handleCancelNewEvent} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <EventIcon color="primary" />
+            <Typography variant="h6">Create New Event</Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+            <TextField
+              fullWidth
+              label="Event Title"
+              value={newEvent.title}
+              onChange={(e) => setNewEvent(prev => ({ ...prev, title: e.target.value }))}
+              required
+            />
+            
+            <TextField
+              fullWidth
+              label="Description"
+              multiline
+              rows={2}
+              value={newEvent.description}
+              onChange={(e) => setNewEvent(prev => ({ ...prev, description: e.target.value }))}
+            />
+            
+            <TextField
+              fullWidth
+              label="Location"
+              value={newEvent.location}
+              onChange={(e) => setNewEvent(prev => ({ ...prev, location: e.target.value }))}
+            />
+            
+            <TextField
+              fullWidth
+              label="Date"
+              type="date"
+              value={newEvent.date}
+              onChange={(e) => setNewEvent(prev => ({ ...prev, date: e.target.value }))}
+              InputLabelProps={{ shrink: true }}
+            />
+            
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                label="Start Time"
+                type="time"
+                value={newEvent.startTime}
+                onChange={(e) => setNewEvent(prev => ({ ...prev, startTime: e.target.value }))}
+                InputLabelProps={{ shrink: true }}
+                sx={{ flex: 1 }}
+              />
+              
+              <TextField
+                label="End Time"
+                type="time"
+                value={newEvent.endTime}
+                onChange={(e) => setNewEvent(prev => ({ ...prev, endTime: e.target.value }))}
+                InputLabelProps={{ shrink: true }}
+                sx={{ flex: 1 }}
+              />
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={handleCancelNewEvent}>Cancel</Button>
+          <Button 
+            onClick={handleSaveNewEvent} 
+            variant="contained"
+            disabled={!newEvent.title.trim()}
+            sx={{
+              background: 'linear-gradient(135deg, #00d4ff 0%, #0095cc 100%)',
+            }}
+          >
+            Create Event
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Event Details Dialog */}
       <Dialog open={!!selectedEvent} onClose={() => setSelectedEvent(null)} maxWidth="md" fullWidth>
