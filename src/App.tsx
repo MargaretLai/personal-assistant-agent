@@ -8,6 +8,7 @@ import NavigationTabs from "./components/layout/NavigationTabs";
 import ChatInterface from "./components/chat/ChatInterface";
 import CalendarView from "./components/calendar/CalendarView";
 import TasksView from "./components/tasks/TasksView";
+import EmailView from "./components/email/EmailView";
 
 const darkTheme = createTheme({
   palette: {
@@ -115,12 +116,7 @@ function App() {
       case 3: // Tasks
         return <TasksView />;
       case 4: // Emails
-        return (
-          <Box sx={{ p: 3 }}>
-            <h2>📧 Email View Coming Soon!</h2>
-            <p>Full email management interface will be added here.</p>
-          </Box>
-        );
+        return <EmailView />;
       default:
         return (
           <MainLayout>
