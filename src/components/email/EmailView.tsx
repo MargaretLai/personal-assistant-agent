@@ -206,7 +206,7 @@ P.S. - Bring your appetite! 😄`,
             Manage your inbox and stay connected
           </Typography>
         </Box>
-        <Button
+        {/* <Button
           variant="contained"
           startIcon={<AddIcon />}
           sx={{
@@ -217,7 +217,7 @@ P.S. - Bring your appetite! 😄`,
           }}
         >
           Compose
-        </Button>
+        </Button> */}
       </Box>
 
       {/* Stats Overview */}
