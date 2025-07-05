@@ -16,18 +16,20 @@ import SendIcon from "@mui/icons-material/Send";
 import PersonIcon from "@mui/icons-material/Person";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import { ChatMessage } from "../../types";
+import { ChatService } from "../../services/chatService";
 
 const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "1",
       content:
-        "Hello! I'm your personal assistant. I can help you manage your calendar, emails, tasks, and notes. What would you like to do?",
+        'Hello! I\'m your AI personal assistant. I can help you manage your calendar, emails, and tasks. Try asking me "What\'s my schedule today?" or "Show my tasks" to get started! 🚀',
       sender: "agent",
       timestamp: new Date(),
     },
   ]);
   const [inputValue, setInputValue] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
 
   const handleSendMessage = () => {
     if (inputValue.trim()) {
@@ -40,17 +42,20 @@ const ChatInterface: React.FC = () => {
       };
 
       setMessages((prev) => [...prev, userMessage]);
+      setIsTyping(true);
 
-      // Simulate agent response (we'll replace this with real AI later)
+      // Get smart AI response
       setTimeout(() => {
+        const response = ChatService.parseCommand(inputValue);
         const agentMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
-          content: `I received your message: "${inputValue}". I'm still learning, but I'll help you with that soon!`,
+          content: response.message,
           sender: "agent",
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, agentMessage]);
-      }, 1000);
+        setIsTyping(false);
+      }, 1500); // Simulate thinking time
 
       setInputValue("");
     }
@@ -140,6 +145,7 @@ const ChatInterface: React.FC = () => {
                       "& .MuiListItemText-primary": {
                         color: "white",
                         fontWeight: 400,
+                        whiteSpace: "pre-line", // Preserves line breaks
                       },
                     }}
                   />
@@ -150,6 +156,39 @@ const ChatInterface: React.FC = () => {
               )}
             </React.Fragment>
           ))}
+
+          {/* Typing Indicator */}
+          {isTyping && (
+            <ListItem
+              sx={{ flexDirection: "column", alignItems: "flex-start", mb: 2 }}
+            >
+              <Box
+                sx={{ display: "flex", alignItems: "center", mb: 1, gap: 1 }}
+              >
+                <Avatar
+                  sx={{ bgcolor: "secondary.main", width: 32, height: 32 }}
+                >
+                  <SmartToyIcon />
+                </Avatar>
+                <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                  AI Assistant is thinking...
+                </Typography>
+              </Box>
+              <Paper
+                elevation={2}
+                sx={{
+                  p: 2,
+                  background:
+                    "linear-gradient(135deg, #ff6b35 0%, #c4501a 100%)",
+                  color: "white",
+                  borderRadius: 2,
+                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+                }}
+              >
+                <Typography variant="body2">●●●</Typography>
+              </Paper>
+            </ListItem>
+          )}
         </List>
       </Paper>
 
@@ -159,11 +198,12 @@ const ChatInterface: React.FC = () => {
           fullWidth
           multiline
           maxRows={3}
-          placeholder="Type your message here..."
+          placeholder="Ask me about your schedule, tasks, or emails..."
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyPress={handleKeyPress}
           variant="outlined"
+          disabled={isTyping}
           sx={{
             "& .MuiOutlinedInput-root": {
               backgroundColor: "rgba(0, 212, 255, 0.05)",
@@ -173,7 +213,7 @@ const ChatInterface: React.FC = () => {
         <IconButton
           color="primary"
           onClick={handleSendMessage}
-          disabled={!inputValue.trim()}
+          disabled={!inputValue.trim() || isTyping}
           sx={{
             alignSelf: "flex-end",
             background: "linear-gradient(135deg, #00d4ff 0%, #0095cc 100%)",
