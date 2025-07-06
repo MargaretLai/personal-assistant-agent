@@ -5,4 +5,5 @@ urlpatterns = [
     path("auth/", include("authentication.urls")),
     path("calendar/", include("calendar_management.urls")),
     path("tasks/", include("task_management.urls")),
+    path("ai/", include("ai_agent.urls")),  # Add this line
 ]

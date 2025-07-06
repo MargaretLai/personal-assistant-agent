@@ -1,5 +1,5 @@
 // src/components/chat/ChatInterface.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   TextField,
@@ -11,29 +11,34 @@ import {
   ListItemText,
   Divider,
   Avatar,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
 import PersonIcon from "@mui/icons-material/Person";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import { ChatMessage } from "../../types";
-import { ChatService } from "../../services/chatService";
+import { aiAPI } from "../../services/apiService";
 
 const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "1",
       content:
-        'Hello! I\'m your AI personal assistant. I can help you manage your calendar, emails, and tasks. Try asking me "What\'s my schedule today?" or "Show my tasks" to get started! 🚀',
+        "Hello! I'm your AI personal assistant. I have access to your real calendar and tasks. Ask me about your schedule, pending tasks, or anything else you need help with! 🤖",
       sender: "agent",
       timestamp: new Date(),
     },
   ]);
   const [inputValue, setInputValue] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentConversationId, setCurrentConversationId] = useState<
+    number | null
+  >(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSendMessage = () => {
-    if (inputValue.trim()) {
-      // Add user message
+  const handleSendMessage = async () => {
+    if (inputValue.trim() && !isLoading) {
       const userMessage: ChatMessage = {
         id: Date.now().toString(),
         content: inputValue,
@@ -42,22 +47,46 @@ const ChatInterface: React.FC = () => {
       };
 
       setMessages((prev) => [...prev, userMessage]);
-      setIsTyping(true);
+      setInputValue("");
+      setIsLoading(true);
+      setError(null);
 
-      // Get smart AI response
-      setTimeout(() => {
-        const response = ChatService.parseCommand(inputValue);
-        const agentMessage: ChatMessage = {
+      try {
+        // Call the real AI API
+        const response = await aiAPI.sendMessage(
+          inputValue,
+          currentConversationId || undefined
+        );
+
+        const aiMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
-          content: response.message,
+          content: response.data.ai_response,
           sender: "agent",
           timestamp: new Date(),
         };
-        setMessages((prev) => [...prev, agentMessage]);
-        setIsTyping(false);
-      }, 1500); // Simulate thinking time
 
-      setInputValue("");
+        setMessages((prev) => [...prev, aiMessage]);
+
+        // Update conversation ID for future messages
+        if (response.data.conversation_id) {
+          setCurrentConversationId(response.data.conversation_id);
+        }
+      } catch (err: any) {
+        console.error("Error sending message to AI:", err);
+        setError("Failed to get AI response. Please try again.");
+
+        // Add error message to chat
+        const errorMessage: ChatMessage = {
+          id: (Date.now() + 2).toString(),
+          content:
+            "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.",
+          sender: "agent",
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -70,6 +99,13 @@ const ChatInterface: React.FC = () => {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      {/* Error Alert */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+
       {/* Messages Area */}
       <Paper
         variant="outlined"
@@ -145,7 +181,7 @@ const ChatInterface: React.FC = () => {
                       "& .MuiListItemText-primary": {
                         color: "white",
                         fontWeight: 400,
-                        whiteSpace: "pre-line", // Preserves line breaks
+                        whiteSpace: "pre-line",
                       },
                     }}
                   />
@@ -157,8 +193,8 @@ const ChatInterface: React.FC = () => {
             </React.Fragment>
           ))}
 
-          {/* Typing Indicator */}
-          {isTyping && (
+          {/* Loading Indicator */}
+          {isLoading && (
             <ListItem
               sx={{ flexDirection: "column", alignItems: "flex-start", mb: 2 }}
             >
@@ -183,9 +219,13 @@ const ChatInterface: React.FC = () => {
                   color: "white",
                   borderRadius: 2,
                   boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
                 }}
               >
-                <Typography variant="body2">●●●</Typography>
+                <CircularProgress size={16} sx={{ color: "white" }} />
+                <Typography variant="body2">Thinking...</Typography>
               </Paper>
             </ListItem>
           )}
@@ -198,12 +238,12 @@ const ChatInterface: React.FC = () => {
           fullWidth
           multiline
           maxRows={3}
-          placeholder="Ask me about your schedule, tasks, or emails..."
+          placeholder="Ask me about your schedule, tasks, or anything else..."
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyPress={handleKeyPress}
           variant="outlined"
-          disabled={isTyping}
+          disabled={isLoading}
           sx={{
             "& .MuiOutlinedInput-root": {
               backgroundColor: "rgba(0, 212, 255, 0.05)",
@@ -213,7 +253,7 @@ const ChatInterface: React.FC = () => {
         <IconButton
           color="primary"
           onClick={handleSendMessage}
-          disabled={!inputValue.trim() || isTyping}
+          disabled={!inputValue.trim() || isLoading}
           sx={{
             alignSelf: "flex-end",
             background: "linear-gradient(135deg, #00d4ff 0%, #0095cc 100%)",

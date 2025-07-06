@@ -112,6 +112,20 @@ export const tasksAPI = {
     apiClient.post("/tasks/categories/", categoryData),
 };
 
+// AI/Chat API calls
+export const aiAPI = {
+  sendMessage: (message: string, conversationId?: number) =>
+    apiClient.post("/ai/chat/", {
+      message,
+      conversation_id: conversationId,
+    }),
+
+  getConversations: () => apiClient.get("/ai/conversations/"),
+
+  getConversationMessages: (conversationId: number) =>
+    apiClient.get(`/ai/conversations/${conversationId}/`),
+};
+
 // Helper function to set auth token
 export const setAuthToken = (token: string) => {
   localStorage.setItem("auth_token", token);
