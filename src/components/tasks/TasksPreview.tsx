@@ -1,5 +1,5 @@
 // src/components/tasks/TasksPreview.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Paper,
   Typography,
@@ -8,22 +8,45 @@ import {
   ListItemText,
   Chip,
   Box,
-  IconButton,
   Checkbox,
   Snackbar,
   Alert,
+  CircularProgress,
 } from "@mui/material";
 import { Task } from "../../types";
-import { getPendingTasks, mockTasks } from "../../services/mockData";
+import { tasksAPI } from "../../services/apiService";
+import { convertApiTaskToFrontend } from "../../utils/dataConverters";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 
 const TasksPreview: React.FC = () => {
-  const [tasks, setTasks] = useState(mockTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [completedTaskName, setCompletedTaskName] = useState("");
 
-  const pendingTasks = tasks.filter((task) => !task.completed).slice(0, 3);
+  // Fetch pending tasks from API
+  useEffect(() => {
+    const fetchPendingTasks = async () => {
+      try {
+        setLoading(true);
+        const response = await tasksAPI.getPendingTasks();
+        const apiTasks = response.data.tasks.slice(0, 3); // Show only first 3
+        const convertedTasks = apiTasks.map(convertApiTaskToFrontend);
+        setTasks(convertedTasks);
+        setError(null);
+      } catch (err: any) {
+        console.error("Error fetching pending tasks:", err);
+        setError("Failed to load tasks");
+        setTasks([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPendingTasks();
+  }, []);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -52,23 +75,57 @@ const TasksPreview: React.FC = () => {
     }
   };
 
-  const handleTaskComplete = (taskId: string) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === taskId ? { ...task, completed: true } : task
-      )
-    );
+  const handleTaskComplete = async (taskId: string) => {
+    try {
+      // Call API to mark task as complete
+      await tasksAPI.markComplete(parseInt(taskId));
 
-    const completedTask = tasks.find((task) => task.id === taskId);
-    if (completedTask) {
-      setCompletedTaskName(completedTask.title);
-      setSnackbarOpen(true);
+      // Update local state
+      setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
+
+      const completedTask = tasks.find((task) => task.id === taskId);
+      if (completedTask) {
+        setCompletedTaskName(completedTask.title);
+        setSnackbarOpen(true);
+      }
+    } catch (error) {
+      console.error("Error completing task:", error);
+      // You could add error handling here
     }
   };
 
   const handleSnackbarClose = () => {
     setSnackbarOpen(false);
   };
+
+  if (loading) {
+    return (
+      <Paper
+        elevation={2}
+        sx={{
+          p: 2,
+          height: "250px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 2,
+          }}
+        >
+          <CircularProgress />
+          <Typography variant="body2" color="text.secondary">
+            Loading tasks...
+          </Typography>
+        </Box>
+      </Paper>
+    );
+  }
 
   return (
     <>
@@ -77,18 +134,24 @@ const TasksPreview: React.FC = () => {
           Pending Tasks
         </Typography>
 
-        {pendingTasks.length === 0 ? (
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        {tasks.length === 0 ? (
           <Box sx={{ textAlign: "center", py: 4 }}>
             <CheckCircleIcon
               sx={{ fontSize: 48, color: "success.main", mb: 1 }}
             />
             <Typography variant="body2" color="text.secondary">
-              All tasks completed! 🎉
+              {error ? "Unable to load tasks" : "All tasks completed! 🎉"}
             </Typography>
           </Box>
         ) : (
           <List dense>
-            {pendingTasks.map((task) => (
+            {tasks.map((task) => (
               <ListItem
                 key={task.id}
                 sx={{
@@ -152,16 +215,6 @@ const TasksPreview: React.FC = () => {
               </ListItem>
             ))}
           </List>
-        )}
-
-        {tasks.filter((task) => !task.completed).length > 3 && (
-          <Typography
-            variant="caption"
-            color="primary"
-            sx={{ mt: 1, display: "block" }}
-          >
-            +{tasks.filter((task) => !task.completed).length - 3} more tasks
-          </Typography>
         )}
       </Paper>
 

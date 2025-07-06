@@ -1,5 +1,5 @@
-// Update the imports in src/components/tasks/TasksView.tsx
-import React, { useState } from "react";
+// src/components/tasks/TasksView.tsx
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Paper,
@@ -19,13 +19,20 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  MenuItem,
   FormControl,
   InputLabel,
   Select,
+  MenuItem,
+  CircularProgress,
+  Alert,
+  Snackbar,
 } from "@mui/material";
 import { Task } from "../../types";
-import { mockTasks } from "../../services/mockData";
+import { tasksAPI } from "../../services/apiService";
+import {
+  convertApiTaskToFrontend,
+  convertFrontendTaskToApi,
+} from "../../utils/dataConverters";
 import AddIcon from "@mui/icons-material/Add";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
@@ -33,9 +40,19 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import TaskAltIcon from "@mui/icons-material/TaskAlt";
 
 const TasksView: React.FC = () => {
-  const [tasks, setTasks] = useState(mockTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [activeTab, setActiveTab] = useState(0);
   const [showNewTaskDialog, setShowNewTaskDialog] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [taskStats, setTaskStats] = useState({
+    total: 0,
+    completed: 0,
+    pending: 0,
+    completion_rate: 0,
+  });
   const [newTask, setNewTask] = useState({
     title: "",
     description: "",
@@ -43,46 +60,32 @@ const TasksView: React.FC = () => {
     dueDate: "",
   });
 
-  // ... keep all existing functions (getPriorityColor, formatDueDate, handleTaskComplete, getFilteredTasks) ...
+  // Fetch tasks from API
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        setLoading(true);
+        const [tasksResponse, statsResponse] = await Promise.all([
+          tasksAPI.getTasks(),
+          tasksAPI.getTaskStats(),
+        ]);
 
-  const handleNewTask = () => {
-    setShowNewTaskDialog(true);
-  };
+        const apiTasks = tasksResponse.data.results;
+        const convertedTasks = apiTasks.map(convertApiTaskToFrontend);
+        setTasks(convertedTasks);
+        setTaskStats(statsResponse.data);
+        setError(null);
+      } catch (err: any) {
+        console.error("Error fetching tasks:", err);
+        setError("Failed to load tasks");
+        setTasks([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const handleSaveNewTask = () => {
-    if (newTask.title.trim()) {
-      const createdTask: Task = {
-        id: Date.now().toString(),
-        title: newTask.title,
-        description: newTask.description || undefined,
-        priority: newTask.priority,
-        completed: false,
-        dueDate: newTask.dueDate ? new Date(newTask.dueDate) : undefined,
-      };
-
-      setTasks((prev) => [...prev, createdTask]);
-      setShowNewTaskDialog(false);
-
-      // Reset form
-      setNewTask({
-        title: "",
-        description: "",
-        priority: "medium",
-        dueDate: "",
-      });
-    }
-  };
-
-  const handleCancelNewTask = () => {
-    setShowNewTaskDialog(false);
-    setNewTask({
-      title: "",
-      description: "",
-      priority: "medium",
-      dueDate: "",
-    });
-  };
-  // Add these missing function implementations at the beginning of the component, after the state declarations:
+    fetchTasks();
+  }, []);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -111,12 +114,36 @@ const TasksView: React.FC = () => {
     }
   };
 
-  const handleTaskComplete = (taskId: string) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === taskId ? { ...task, completed: !task.completed } : task
-      )
-    );
+  const handleTaskComplete = async (taskId: string) => {
+    try {
+      // Call API to mark task as complete
+      await tasksAPI.markComplete(parseInt(taskId));
+
+      // Update local state
+      setTasks((prevTasks) =>
+        prevTasks.map((task) =>
+          task.id === taskId ? { ...task, completed: true } : task
+        )
+      );
+
+      // Update stats
+      setTaskStats((prev) => ({
+        ...prev,
+        completed: prev.completed + 1,
+        pending: prev.pending - 1,
+        completion_rate: Math.round(((prev.completed + 1) / prev.total) * 100),
+      }));
+
+      const completedTask = tasks.find((task) => task.id === taskId);
+      if (completedTask) {
+        setSnackbarMessage(`Task "${completedTask.title}" completed!`);
+        setSnackbarOpen(true);
+      }
+    } catch (error) {
+      console.error("Error completing task:", error);
+      setSnackbarMessage("Failed to complete task. Please try again.");
+      setSnackbarOpen(true);
+    }
   };
 
   const getFilteredTasks = () => {
@@ -135,9 +162,80 @@ const TasksView: React.FC = () => {
         return tasks;
     }
   };
-  const completionRate = Math.round(
-    (tasks.filter((task) => task.completed).length / tasks.length) * 100
-  );
+
+  const handleNewTask = () => {
+    setShowNewTaskDialog(true);
+  };
+
+  const handleSaveNewTask = async () => {
+    if (newTask.title.trim()) {
+      try {
+        const taskData = convertFrontendTaskToApi({
+          title: newTask.title,
+          description: newTask.description || undefined,
+          priority: newTask.priority,
+          completed: false,
+          dueDate: newTask.dueDate ? new Date(newTask.dueDate) : undefined,
+        });
+
+        const response = await tasksAPI.createTask(taskData);
+        const createdTask = convertApiTaskToFrontend(response.data);
+
+        setTasks((prev) => [...prev, createdTask]);
+        setTaskStats((prev) => ({
+          ...prev,
+          total: prev.total + 1,
+          pending: prev.pending + 1,
+          completion_rate: Math.round(
+            (prev.completed / (prev.total + 1)) * 100
+          ),
+        }));
+
+        setShowNewTaskDialog(false);
+        setSnackbarMessage(`Task "${newTask.title}" created successfully!`);
+        setSnackbarOpen(true);
+
+        // Reset form
+        setNewTask({
+          title: "",
+          description: "",
+          priority: "medium",
+          dueDate: "",
+        });
+      } catch (error) {
+        console.error("Error creating task:", error);
+        setSnackbarMessage("Failed to create task. Please try again.");
+        setSnackbarOpen(true);
+      }
+    }
+  };
+
+  const handleCancelNewTask = () => {
+    setShowNewTaskDialog(false);
+    setNewTask({
+      title: "",
+      description: "",
+      priority: "medium",
+      dueDate: "",
+    });
+  };
+
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          p: 3,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 2,
+        }}
+      >
+        <CircularProgress size={60} />
+        <Typography variant="h6">Loading tasks...</Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ p: 3 }}>
@@ -173,7 +271,13 @@ const TasksView: React.FC = () => {
         </Button>
       </Box>
 
-      {/* Progress Overview - keep existing code */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
+      {/* Progress Overview */}
       <Paper
         elevation={2}
         sx={{
@@ -187,14 +291,17 @@ const TasksView: React.FC = () => {
         </Typography>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
           <Typography variant="body2">
-            {tasks.filter((task) => task.completed).length} of {tasks.length}{" "}
-            tasks completed
+            {taskStats.completed} of {taskStats.total} tasks completed
           </Typography>
-          <Chip label={`${completionRate}%`} color="primary" size="small" />
+          <Chip
+            label={`${taskStats.completion_rate}%`}
+            color="primary"
+            size="small"
+          />
         </Box>
         <LinearProgress
           variant="determinate"
-          value={completionRate}
+          value={taskStats.completion_rate}
           sx={{
             height: 8,
             borderRadius: 4,
@@ -206,7 +313,7 @@ const TasksView: React.FC = () => {
         />
       </Paper>
 
-      {/* Filter Tabs - keep existing code */}
+      {/* Filter Tabs */}
       <Paper elevation={2} sx={{ mb: 3 }}>
         <Tabs
           value={activeTab}
@@ -239,7 +346,7 @@ const TasksView: React.FC = () => {
         </Tabs>
       </Paper>
 
-      {/* Tasks List - keep existing code */}
+      {/* Tasks List */}
       <Paper
         elevation={2}
         sx={{ background: "linear-gradient(145deg, #1a1f35 0%, #242b42 100%)" }}
@@ -413,6 +520,22 @@ const TasksView: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={4000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity={snackbarMessage.includes("Failed") ? "error" : "success"}
+          variant="filled"
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

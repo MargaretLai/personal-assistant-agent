@@ -1,5 +1,5 @@
 // src/components/calendar/CalendarPreview.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Paper,
   Typography,
@@ -14,18 +14,44 @@ import {
   DialogActions,
   Button,
   IconButton,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
 import { CalendarEvent } from "../../types";
-import { getTodaysEvents } from "../../services/mockData";
+import { calendarAPI } from "../../services/apiService";
+import { convertApiEventToFrontend } from "../../utils/dataConverters";
 import InfoIcon from "@mui/icons-material/Info";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 
 const CalendarPreview: React.FC = () => {
-  const [todaysEvents] = useState(getTodaysEvents());
+  const [todaysEvents, setTodaysEvents] = useState<CalendarEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
     null
   );
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch today's events from API
+  useEffect(() => {
+    const fetchTodaysEvents = async () => {
+      try {
+        setLoading(true);
+        const response = await calendarAPI.getTodaysEvents();
+        const events = response.data.events.map(convertApiEventToFrontend);
+        setTodaysEvents(events);
+        setError(null);
+      } catch (err: any) {
+        console.error("Error fetching today's events:", err);
+        setError("Failed to load today's events");
+        setTodaysEvents([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTodaysEvents();
+  }, []);
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString("en-US", {
@@ -55,6 +81,35 @@ const CalendarPreview: React.FC = () => {
     setSelectedEvent(null);
   };
 
+  if (loading) {
+    return (
+      <Paper
+        elevation={2}
+        sx={{
+          p: 2,
+          height: "250px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 2,
+          }}
+        >
+          <CircularProgress />
+          <Typography variant="body2" color="text.secondary">
+            Loading today's events...
+          </Typography>
+        </Box>
+      </Paper>
+    );
+  }
+
   return (
     <>
       <Paper elevation={2} sx={{ p: 2, height: "250px", overflow: "auto" }}>
@@ -62,9 +117,15 @@ const CalendarPreview: React.FC = () => {
           Today's Schedule
         </Typography>
 
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
         {todaysEvents.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
-            No events scheduled for today
+            {error ? "Unable to load events" : "No events scheduled for today"}
           </Typography>
         ) : (
           <List dense>
