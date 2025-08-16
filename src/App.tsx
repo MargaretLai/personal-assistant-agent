@@ -1,14 +1,18 @@
 // src/App.tsx
-import React, { useState } from "react";
+import React from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
-import { Box } from "@mui/material";
-import MainLayout from "./components/layout/MainLayout";
-import NavigationTabs from "./components/layout/NavigationTabs";
-import ChatInterface from "./components/chat/ChatInterface";
-import CalendarView from "./components/calendar/CalendarView";
-import TasksView from "./components/tasks/TasksView";
-import EmailView from "./components/email/EmailView";
+import { AuthProvider } from "./contexts/AuthContext";
+import AuthenticatedApp from "./components/AuthenticatedApp";
+import LoginPage from "./components/auth/LoginPage";
+import AuthSuccess from "./components/auth/AuthSuccess";
+import AuthError from "./components/auth/AuthError";
 
 const darkTheme = createTheme({
   palette: {
@@ -95,49 +99,19 @@ const darkTheme = createTheme({
 });
 
 function App() {
-  const [activeTab, setActiveTab] = useState(0);
-
-  const renderActiveView = () => {
-    switch (activeTab) {
-      case 0: // Dashboard
-        return (
-          <MainLayout>
-            <ChatInterface />
-          </MainLayout>
-        );
-      case 1: // Chat
-        return (
-          <Box sx={{ p: 2, height: "100vh" }}>
-            <ChatInterface />
-          </Box>
-        );
-      case 2: // Calendar
-        return <CalendarView />;
-      case 3: // Tasks
-        return <TasksView />;
-      case 4: // Emails
-        return <EmailView />;
-      default:
-        return (
-          <MainLayout>
-            <ChatInterface />
-          </MainLayout>
-        );
-    }
-  };
-
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
-      <Box sx={{ minHeight: "100vh" }}>
-        {/* Navigation */}
-        <Box sx={{ p: 2, pb: 0 }}>
-          <NavigationTabs activeTab={activeTab} onTabChange={setActiveTab} />
-        </Box>
-
-        {/* Main Content */}
-        {renderActiveView()}
-      </Box>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/auth/success" element={<AuthSuccess />} />
+            <Route path="/auth/error" element={<AuthError />} />
+            <Route path="/*" element={<AuthenticatedApp />} />
+          </Routes>
+        </Router>
+      </AuthProvider>
     </ThemeProvider>
   );
 }
