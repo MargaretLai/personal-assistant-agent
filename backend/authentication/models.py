@@ -15,3 +15,16 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.timezone}"
+
+
+class GoogleToken(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='google_token')
+    access_token = models.TextField()
+    refresh_token = models.TextField(null=True, blank=True)
+    token_expires_at = models.DateTimeField(null=True, blank=True)
+    scope = models.TextField()  # Store granted scopes
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"Google Token for {self.user.username}"

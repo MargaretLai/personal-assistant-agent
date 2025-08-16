@@ -15,6 +15,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 import requests
 from urllib.parse import urlencode
+from .models import GoogleToken
+from datetime import datetime, timedelta
 
 
 @api_view(["POST"])
@@ -146,7 +148,7 @@ def google_oauth(request):
     params = {
         "client_id": settings.GOOGLE_OAUTH2_CLIENT_ID,
         "redirect_uri": settings.GOOGLE_OAUTH2_REDIRECT_URI,
-        "scope": "openid email profile",
+        "scope": "openid email profile https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.readonly",
         "response_type": "code",
         "access_type": "offline",
         "prompt": "consent",
@@ -196,8 +198,23 @@ def google_oauth_callback(request):
             },
         )
 
+        # Store Google tokens
+        expires_at = None
+        if "expires_in" in token_json:
+            expires_at = datetime.now() + timedelta(seconds=token_json["expires_in"])
+
+        google_token, token_created = GoogleToken.objects.update_or_create(
+            user=user,
+            defaults={
+                "access_token": token_json["access_token"],
+                "refresh_token": token_json.get("refresh_token"),
+                "token_expires_at": expires_at,
+                "scope": token_json.get("scope", ""),
+            },
+        )
+
         # Create or get token for API authentication
-        token, token_created = Token.objects.get_or_create(user=user)
+        token, api_token_created = Token.objects.get_or_create(user=user)
 
         # Log the user in for session-based auth
         django_login(request, user)
@@ -209,6 +226,7 @@ def google_oauth_callback(request):
         return redirect(frontend_url)
 
     except Exception as e:
+        print(f"OAuth error: {e}")  # Debug log
         # Redirect to frontend with error
         frontend_url = f"{settings.FRONTEND_URL}/auth/error?error=oauth_failed"
         return redirect(frontend_url)
