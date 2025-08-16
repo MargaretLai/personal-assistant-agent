@@ -169,3 +169,23 @@ LOGGING = {
         },
     },
 }
+
+# Google OAuth Configuration
+GOOGLE_OAUTH2_CLIENT_ID = config('GOOGLE_OAUTH2_CLIENT_ID', default='')
+GOOGLE_OAUTH2_CLIENT_SECRET = config('GOOGLE_OAUTH2_CLIENT_SECRET', default='')
+GOOGLE_OAUTH2_REDIRECT_URI = config('GOOGLE_OAUTH2_REDIRECT_URI', default='http://localhost:8000/api/v1/auth/google/callback/')
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
+
+# JWT Configuration for token handling
+SECRET_KEY_JWT = config('SECRET_KEY_JWT', default=SECRET_KEY)
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+# Update CORS to allow OAuth redirects (replace your existing CORS settings)
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://accounts.google.com",
+]
+
+CORS_ALLOW_ALL_ORIGINS = True  # For development only

@@ -9,4 +9,7 @@ urlpatterns = [
     path("register/", views.register, name="register"),
     path("logout/", views.logout, name="logout"),
     path("profile/", views.user_profile, name="profile"),
+    # OAuth URLs
+    path("google/", views.google_oauth, name="google_oauth"),
+    path("google/callback/", views.google_oauth_callback, name="google_oauth_callback"),
 ]

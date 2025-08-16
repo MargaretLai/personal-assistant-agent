@@ -7,6 +7,14 @@ from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.db import IntegrityError
+from django.shortcuts import redirect
+from django.http import JsonResponse
+from django.conf import settings
+from django.contrib.auth import login as django_login
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+import requests
+from urllib.parse import urlencode
 
 
 @api_view(["POST"])
@@ -127,3 +135,80 @@ def user_profile(request):
             "last_login": user.last_login,
         }
     )
+
+
+# Google OAuth Views
+@csrf_exempt
+@require_http_methods(["GET"])
+def google_oauth(request):
+    """Initiate Google OAuth flow"""
+    google_oauth_url = "https://accounts.google.com/o/oauth2/auth"
+    params = {
+        "client_id": settings.GOOGLE_OAUTH2_CLIENT_ID,
+        "redirect_uri": settings.GOOGLE_OAUTH2_REDIRECT_URI,
+        "scope": "openid email profile",
+        "response_type": "code",
+        "access_type": "offline",
+        "prompt": "consent",
+    }
+
+    authorization_url = f"{google_oauth_url}?{urlencode(params)}"
+    return redirect(authorization_url)
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def google_oauth_callback(request):
+    """Handle Google OAuth callback"""
+    code = request.GET.get("code")
+    if not code:
+        return JsonResponse({"error": "Authorization code not provided"}, status=400)
+
+    try:
+        # Exchange code for access token
+        token_url = "https://oauth2.googleapis.com/token"
+        token_data = {
+            "client_id": settings.GOOGLE_OAUTH2_CLIENT_ID,
+            "client_secret": settings.GOOGLE_OAUTH2_CLIENT_SECRET,
+            "code": code,
+            "grant_type": "authorization_code",
+            "redirect_uri": settings.GOOGLE_OAUTH2_REDIRECT_URI,
+        }
+
+        token_response = requests.post(token_url, data=token_data)
+        token_json = token_response.json()
+
+        if "access_token" not in token_json:
+            return JsonResponse({"error": "Failed to get access token"}, status=400)
+
+        # Get user info from Google
+        user_info_url = f"https://www.googleapis.com/oauth2/v1/userinfo?access_token={token_json['access_token']}"
+        user_response = requests.get(user_info_url)
+        user_data = user_response.json()
+
+        # Create or get user
+        user, created = User.objects.get_or_create(
+            email=user_data["email"],
+            defaults={
+                "username": user_data["email"],
+                "first_name": user_data.get("given_name", ""),
+                "last_name": user_data.get("family_name", ""),
+            },
+        )
+
+        # Create or get token for API authentication
+        token, token_created = Token.objects.get_or_create(user=user)
+
+        # Log the user in for session-based auth
+        django_login(request, user)
+
+        # Redirect to frontend with token as URL parameter
+        frontend_url = (
+            f"{settings.FRONTEND_URL}/auth/success?token={token.key}&user_id={user.id}"
+        )
+        return redirect(frontend_url)
+
+    except Exception as e:
+        # Redirect to frontend with error
+        frontend_url = f"{settings.FRONTEND_URL}/auth/error?error=oauth_failed"
+        return redirect(frontend_url)
