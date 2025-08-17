@@ -1,5 +1,5 @@
 // src/components/email/EmailPreview.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Paper,
   Typography,
@@ -11,29 +11,66 @@ import {
   Collapse,
   IconButton,
   Divider,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
-import { Email } from "../../types";
-import { mockEmails } from "../../services/mockData";
+import { emailAPI } from "../../services/apiService";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import MarkEmailReadIcon from "@mui/icons-material/MarkEmailRead";
 
+interface Email {
+  id: string;
+  subject: string;
+  sender: string;
+  snippet: string;
+  body?: string;
+  timestamp: string;
+  isRead: boolean;
+  is_gmail?: boolean;
+}
+
 const EmailPreview: React.FC = () => {
-  const [emails, setEmails] = useState(mockEmails);
+  const [emails, setEmails] = useState<Email[]>([]);
   const [expandedEmail, setExpandedEmail] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const unreadEmails = emails.filter((email) => !email.isRead).slice(0, 3);
+  // Fetch recent emails from API
+  useEffect(() => {
+    const fetchRecentEmails = async () => {
+      try {
+        setLoading(true);
+        const response = await emailAPI.getRecentEmails();
+        setEmails(response.data.emails || []);
+        setError(null);
+      } catch (err: any) {
+        console.error("Error fetching recent emails:", err);
+        setError("Failed to load emails");
+        setEmails([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const formatTime = (date: Date) => {
-    const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    fetchRecentEmails();
+  }, []);
 
-    if (diffInHours < 1) {
-      return "Just now";
-    } else if (diffInHours < 24) {
-      return `${Math.floor(diffInHours)}h ago`;
-    } else {
-      return date.toLocaleDateString();
+  const formatTime = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+
+      if (diffInHours < 1) {
+        return "Just now";
+      } else if (diffInHours < 24) {
+        return `${Math.floor(diffInHours)}h ago`;
+      } else {
+        return date.toLocaleDateString();
+      }
+    } catch {
+      return "Recently";
     }
   };
 
@@ -50,38 +87,42 @@ const EmailPreview: React.FC = () => {
     );
   };
 
-  const getFullEmailContent = (email: Email) => {
-    // Mock full email content
-    const fullContents: { [key: string]: string } = {
-      "1": `Hi there,
-
-Can you please send me the latest project status by EOD? We need to prepare for the client meeting tomorrow and I want to make sure we're covering all the key points.
-
-Also, please include:
-- Current progress percentage
-- Any blockers or issues
-- Updated timeline
-- Resource requirements
-
-Thanks!
-Sarah`,
-      "3": `Dear Valued Customer,
-
-Your monthly subscription payment of $29.99 is due on July 10th. Please ensure your payment method is up to date to avoid any service interruptions.
-
-You can update your payment information by logging into your account at webservices.com/billing.
-
-If you have any questions, please don't hesitate to contact our support team.
-
-Best regards,
-Billing Team`,
-    };
-
+  const getEmailContent = (email: Email) => {
     return (
-      fullContents[email.id] ||
-      email.snippet + "\n\n[Full email content would be loaded here...]"
+      email.body || email.snippet + "\n\n[Full email content from Gmail...]"
     );
   };
+
+  const unreadEmails = emails.filter((email) => !email.isRead);
+
+  if (loading) {
+    return (
+      <Paper
+        elevation={2}
+        sx={{
+          p: 2,
+          height: "250px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 2,
+          }}
+        >
+          <CircularProgress />
+          <Typography variant="body2" color="text.secondary">
+            Loading emails...
+          </Typography>
+        </Box>
+      </Paper>
+    );
+  }
 
   return (
     <Paper elevation={2} sx={{ p: 2, height: "250px", overflow: "auto" }}>
@@ -94,18 +135,24 @@ Billing Team`,
         )}
       </Box>
 
-      {unreadEmails.length === 0 ? (
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      {emails.length === 0 ? (
         <Box sx={{ textAlign: "center", py: 4 }}>
           <MarkEmailReadIcon
             sx={{ fontSize: 48, color: "success.main", mb: 1 }}
           />
           <Typography variant="body2" color="text.secondary">
-            No new emails
+            {error ? "Unable to load emails" : "No recent emails"}
           </Typography>
         </Box>
       ) : (
         <List dense>
-          {unreadEmails.map((email) => (
+          {emails.slice(0, 3).map((email) => (
             <Box key={email.id}>
               <ListItem
                 sx={{
@@ -113,7 +160,7 @@ Billing Team`,
                   cursor: "pointer",
                   borderRadius: 1,
                   "&:hover": {
-                    backgroundColor: "rgba(0, 212, 255, 0.05)",
+                    backgroundColor: "rgba(0, 212, 255, 0.1)",
                   },
                 }}
                 onClick={() => handleEmailClick(email.id)}
@@ -197,7 +244,7 @@ Billing Team`,
                       fontSize: "0.85rem",
                     }}
                   >
-                    {getFullEmailContent(email)}
+                    {getEmailContent(email)}
                   </Typography>
                 </Box>
               </Collapse>

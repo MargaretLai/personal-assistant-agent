@@ -28,7 +28,17 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       // Token expired or invalid
       localStorage.removeItem("auth_token");
-      window.location.href = "/login"; // Will implement login later
+      localStorage.removeItem("auth_user");
+      window.location.href = "/login";
+    } else if (
+      error.response?.status === 500 &&
+      error.response?.data?.error?.includes("Google authentication")
+    ) {
+      // Google token issue - redirect to re-authenticate
+      console.log(
+        "Google authentication expired, redirecting to re-authenticate..."
+      );
+      window.location.href = "/api/v1/auth/google/";
     }
     return Promise.reject(error);
   }
@@ -53,6 +63,7 @@ export const authAPI = {
 };
 
 // Calendar API calls
+// Calendar API calls - UPDATED with Google Calendar actions
 export const calendarAPI = {
   getEvents: (params?: { start_date?: string; end_date?: string }) =>
     apiClient.get("/calendar/events/", { params }),
@@ -75,6 +86,29 @@ export const calendarAPI = {
   getTodaysEvents: () => apiClient.get("/calendar/events/today/"),
 
   getUpcomingEvents: () => apiClient.get("/calendar/events/upcoming/"),
+
+  // NEW Google Calendar methods
+  createGoogleEvent: (eventData: {
+    title: string;
+    description?: string;
+    location?: string;
+    start_time: string;
+    end_time: string;
+    timezone?: string;
+    attendees?: string[];
+  }) => apiClient.post("/calendar/google/events/create/", eventData),
+
+  updateGoogleEvent: (eventId: string, eventData: any) =>
+    apiClient.put(`/calendar/google/events/${eventId}/update/`, eventData),
+
+  deleteGoogleEvent: (eventId: string) =>
+    apiClient.delete(`/calendar/google/events/${eventId}/delete/`),
+
+  getGoogleEvent: (eventId: string) =>
+    apiClient.get(`/calendar/google/events/${eventId}/`),
+
+  findFreeTime: (params?: { duration?: number; days_ahead?: number }) =>
+    apiClient.get("/calendar/google/free-time/", { params }),
 };
 
 // Tasks API calls
@@ -124,6 +158,20 @@ export const aiAPI = {
 
   getConversationMessages: (conversationId: number) =>
     apiClient.get(`/ai/conversations/${conversationId}/`),
+};
+
+// Email API calls - FIXED: Changed 'api' to 'apiClient'
+export const emailAPI = {
+  getEmails: (params?: { max_results?: number; query?: string }) => {
+    const queryString = params
+      ? `?${new URLSearchParams(params as any).toString()}`
+      : "";
+    return apiClient.get(`/emails/emails/${queryString}`);
+  },
+
+  getUnreadEmails: () => apiClient.get("/emails/emails/unread/"),
+
+  getRecentEmails: () => apiClient.get("/emails/emails/recent/"),
 };
 
 // Helper function to set auth token

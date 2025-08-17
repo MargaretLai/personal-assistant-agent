@@ -17,6 +17,7 @@ import requests
 from urllib.parse import urlencode
 from .models import GoogleToken
 from datetime import datetime, timedelta
+from django.utils import timezone
 
 
 @api_view(["POST"])
@@ -201,7 +202,7 @@ def google_oauth_callback(request):
         # Store Google tokens
         expires_at = None
         if "expires_in" in token_json:
-            expires_at = datetime.now() + timedelta(seconds=token_json["expires_in"])
+            expires_at = timezone.now() + timedelta(seconds=token_json["expires_in"])
 
         google_token, token_created = GoogleToken.objects.update_or_create(
             user=user,
@@ -230,3 +231,58 @@ def google_oauth_callback(request):
         # Redirect to frontend with error
         frontend_url = f"{settings.FRONTEND_URL}/auth/error?error=oauth_failed"
         return redirect(frontend_url)
+
+
+# backend/authentication/views.py
+# Add this new function after your existing imports:
+
+
+def refresh_google_token(user):
+    """Refresh Google OAuth token if expired"""
+    try:
+        google_token = GoogleToken.objects.get(user=user)
+
+        # Check if token is expired or will expire soon (within 5 minutes)
+        if google_token.token_expires_at:
+            from django.utils import timezone
+
+            if timezone.now() >= google_token.token_expires_at - timedelta(minutes=5):
+                print(f"DEBUG: Refreshing expired token for {user.email}")
+
+                # Refresh the token
+                refresh_data = {
+                    "client_id": settings.GOOGLE_OAUTH2_CLIENT_ID,
+                    "client_secret": settings.GOOGLE_OAUTH2_CLIENT_SECRET,
+                    "refresh_token": google_token.refresh_token,
+                    "grant_type": "refresh_token",
+                }
+
+                refresh_response = requests.post(
+                    "https://oauth2.googleapis.com/token", data=refresh_data
+                )
+
+                if refresh_response.status_code == 200:
+                    refresh_json = refresh_response.json()
+
+                    # Update the token
+                    google_token.access_token = refresh_json["access_token"]
+                    if "expires_in" in refresh_json:
+                        google_token.token_expires_at = timezone.now() + timedelta(
+                            seconds=refresh_json["expires_in"]
+                        )
+                    google_token.save()
+
+                    print(f"DEBUG: Token refreshed successfully for {user.email}")
+                    return True
+                else:
+                    print(f"DEBUG: Token refresh failed: {refresh_response.text}")
+                    return False
+
+        return True  # Token is still valid
+
+    except GoogleToken.DoesNotExist:
+        print(f"DEBUG: No Google token found for {user.email}")
+        return False
+    except Exception as e:
+        print(f"DEBUG: Error refreshing token: {e}")
+        return False

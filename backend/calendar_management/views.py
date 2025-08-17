@@ -8,6 +8,7 @@ from datetime import timedelta, datetime
 from .models import CalendarEvent
 from .serializers import CalendarEventSerializer, CalendarEventCreateSerializer
 from .google_calendar_service import GoogleCalendarService
+import json
 
 
 class CalendarEventListCreateView(generics.ListCreateAPIView):
@@ -202,3 +203,161 @@ def upcoming_events(request):
 
         serializer = CalendarEventSerializer(local_events, many=True)
         return Response({"count": local_events.count(), "events": serializer.data})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_google_event(request):
+    """Create a new event in Google Calendar"""
+    try:
+        google_service = GoogleCalendarService(request.user)
+
+        # Get event data from request
+        event_data = {
+            "title": request.data.get("title"),
+            "description": request.data.get("description", ""),
+            "location": request.data.get("location", ""),
+            "start_time": request.data.get("start_time"),
+            "end_time": request.data.get("end_time"),
+            "timezone": request.data.get("timezone", "America/Chicago"),
+            "attendees": request.data.get("attendees", []),
+        }
+
+        # Validate required fields
+        if (
+            not event_data["title"]
+            or not event_data["start_time"]
+            or not event_data["end_time"]
+        ):
+            return Response(
+                {"error": "Title, start_time, and end_time are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Create event in Google Calendar
+        google_event = google_service.create_event(event_data)
+
+        return Response(
+            {
+                "success": True,
+                "message": "Event created in Google Calendar",
+                "google_event_id": google_event["id"],
+                "google_event": google_event,
+            }
+        )
+
+    except Exception as e:
+        return Response(
+            {"error": f"Failed to create Google Calendar event: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["PUT"])
+@permission_classes([IsAuthenticated])
+def update_google_event(request, event_id):
+    """Update an existing Google Calendar event"""
+    try:
+        google_service = GoogleCalendarService(request.user)
+
+        # Get update data from request
+        event_data = {}
+        if "title" in request.data:
+            event_data["title"] = request.data["title"]
+        if "description" in request.data:
+            event_data["description"] = request.data["description"]
+        if "location" in request.data:
+            event_data["location"] = request.data["location"]
+        if "start_time" in request.data:
+            event_data["start_time"] = request.data["start_time"]
+        if "end_time" in request.data:
+            event_data["end_time"] = request.data["end_time"]
+        if "timezone" in request.data:
+            event_data["timezone"] = request.data["timezone"]
+
+        # Update event in Google Calendar
+        updated_event = google_service.update_event(event_id, event_data)
+
+        return Response(
+            {
+                "success": True,
+                "message": "Event updated in Google Calendar",
+                "google_event": updated_event,
+            }
+        )
+
+    except Exception as e:
+        return Response(
+            {"error": f"Failed to update Google Calendar event: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def delete_google_event(request, event_id):
+    """Delete a Google Calendar event"""
+    try:
+        google_service = GoogleCalendarService(request.user)
+
+        # Delete event from Google Calendar
+        google_service.delete_event(event_id)
+
+        return Response(
+            {"success": True, "message": "Event deleted from Google Calendar"}
+        )
+
+    except Exception as e:
+        return Response(
+            {"error": f"Failed to delete Google Calendar event: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_google_event(request, event_id):
+    """Get a specific Google Calendar event"""
+    try:
+        google_service = GoogleCalendarService(request.user)
+
+        # Get event from Google Calendar
+        google_event = google_service.get_event_by_id(event_id)
+
+        return Response({"success": True, "google_event": google_event})
+
+    except Exception as e:
+        return Response(
+            {"error": f"Failed to get Google Calendar event: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def find_free_time(request):
+    """Find free time slots in Google Calendar"""
+    try:
+        google_service = GoogleCalendarService(request.user)
+
+        # Get parameters
+        duration_minutes = int(request.query_params.get("duration", 60))
+        days_ahead = int(request.query_params.get("days_ahead", 7))
+
+        # Find free time
+        free_slots = google_service.find_free_time(duration_minutes, days_ahead)
+
+        return Response(
+            {
+                "success": True,
+                "free_slots": free_slots,
+                "duration_requested": duration_minutes,
+                "days_searched": days_ahead,
+            }
+        )
+
+    except Exception as e:
+        return Response(
+            {"error": f"Failed to find free time: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )

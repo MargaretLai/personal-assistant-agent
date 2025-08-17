@@ -1,5 +1,5 @@
 // src/components/email/EmailView.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Paper,
@@ -19,9 +19,10 @@ import {
   DialogContent,
   DialogActions,
   Divider,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
-import { Email } from "../../types";
-import { mockEmails } from "../../services/mockData";
+import { emailAPI } from "../../services/apiService";
 import AddIcon from "@mui/icons-material/Add";
 import MarkEmailReadIcon from "@mui/icons-material/MarkEmailRead";
 import ReplyIcon from "@mui/icons-material/Reply";
@@ -31,23 +32,62 @@ import EmailIcon from "@mui/icons-material/Email";
 import InboxIcon from "@mui/icons-material/Inbox";
 import StarIcon from "@mui/icons-material/Star";
 
+interface Email {
+  id: string;
+  subject: string;
+  sender: string;
+  snippet: string;
+  body?: string;
+  date: string;
+  is_read: boolean;
+  thread_id: string;
+  is_gmail?: boolean;
+}
+
 const EmailView: React.FC = () => {
-  const [emails, setEmails] = useState(mockEmails);
+  const [emails, setEmails] = useState<Email[]>([]);
   const [activeTab, setActiveTab] = useState(0);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const formatTime = (date: Date) => {
-    const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+  // Fetch emails from API
+  useEffect(() => {
+    const fetchEmails = async () => {
+      try {
+        setLoading(true);
+        const response = await emailAPI.getEmails({ max_results: 50 });
+        setEmails(response.data.emails || []);
+        setError(null);
+      } catch (err: any) {
+        console.error("Error fetching emails:", err);
+        setError("Failed to load emails");
+        setEmails([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    if (diffInHours < 1) {
-      return "Just now";
-    } else if (diffInHours < 24) {
-      return `${Math.floor(diffInHours)}h ago`;
-    } else if (diffInHours < 48) {
-      return "Yesterday";
-    } else {
-      return date.toLocaleDateString();
+    fetchEmails();
+  }, []);
+
+  const formatTime = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+
+      if (diffInHours < 1) {
+        return "Just now";
+      } else if (diffInHours < 24) {
+        return `${Math.floor(diffInHours)}h ago`;
+      } else if (diffInHours < 48) {
+        return "Yesterday";
+      } else {
+        return date.toLocaleDateString();
+      }
+    } catch {
+      return "Recently";
     }
   };
 
@@ -56,9 +96,9 @@ const EmailView: React.FC = () => {
       case 0:
         return emails; // All
       case 1:
-        return emails.filter((email) => !email.isRead); // Unread
+        return emails.filter((email) => !email.is_read); // Unread
       case 2:
-        return emails.filter((email) => email.isRead); // Read
+        return emails.filter((email) => email.is_read); // Read
       default:
         return emails;
     }
@@ -68,115 +108,34 @@ const EmailView: React.FC = () => {
     if (event) event.stopPropagation();
     setEmails((prevEmails) =>
       prevEmails.map((email) =>
-        email.id === emailId ? { ...email, isRead: true } : email
+        email.id === emailId ? { ...email, is_read: true } : email
       )
     );
   };
 
   const handleEmailClick = (email: Email) => {
     setSelectedEmail(email);
-    if (!email.isRead) {
+    if (!email.is_read) {
       handleMarkAsRead(email.id);
     }
   };
 
-  const getFullEmailContent = (email: Email) => {
-    const fullContents: { [key: string]: string } = {
-      "1": `Hi there,
-
-Can you please send me the latest project status by EOD? We need to prepare for the client meeting tomorrow and I want to make sure we're covering all the key points.
-
-Also, please include:
-- Current progress percentage
-- Any blockers or issues
-- Updated timeline
-- Resource requirements
-
-Looking forward to your update.
-
-Thanks!
-Sarah
-
---
-Sarah Johnson
-Project Manager
-sarah.manager@company.com
-(555) 123-4567`,
-
-      "2": `Dear AI Conference Attendee,
-
-Welcome to AI Conference 2025! We're excited to have you join us for what promises to be an incredible event.
-
-**Conference Details:**
-📅 Date: July 15-17, 2025
-📍 Location: San Francisco Convention Center
-🎫 Your ticket: Premium Pass #AC2025-1234
-
-**What to Expect:**
-- 50+ expert speakers from leading AI companies
-- Hands-on workshops and labs
-- Networking opportunities with 2,000+ attendees
-- Exclusive access to new product announcements
-
-**Getting Ready:**
-- Download the conference app: ai-conference.com/app
-- Review the schedule: ai-conference.com/schedule
-- Join our Slack community: #aiconf2025
-
-We can't wait to see you there!
-
-Best regards,
-The AI Conference Team`,
-
-      "3": `Dear Valued Customer,
-
-Your monthly subscription payment of $29.99 is due on July 10th. Please ensure your payment method is up to date to avoid any service interruptions.
-
-**Account Details:**
-- Account: Premium Plan
-- Next billing date: July 10, 2025
-- Amount due: $29.99
-
-**Payment Method:**
-Your card ending in ****4567 will be charged automatically. If you need to update your payment information, please visit: webservices.com/billing
-
-**Questions?**
-If you have any questions about your bill or need assistance, our support team is here to help 24/7 at support@webservices.com.
-
-Thank you for being a valued customer!
-
-Best regards,
-Billing Team
-Web Services Inc.`,
-
-      "4": `Hey!
-
-Hope you're doing well! I was thinking we should finally try that new restaurant downtown that everyone's been talking about. 
-
-How about this Saturday around 7 PM? I heard they have amazing pasta and the atmosphere is supposed to be really nice. Perfect for catching up!
-
-Let me know if that works for you, or if you prefer a different day. I'm pretty flexible this weekend.
-
-Also, did you see the latest episode of that show we were watching? No spoilers, but WOW! 
-
-Talk soon!
-Alex
-
-P.S. - Bring your appetite! 😄`,
-    };
-
+  const getEmailContent = (email: Email) => {
     return (
-      fullContents[email.id] ||
-      email.snippet + "\n\n[Full email content would be loaded here...]"
+      email.body || email.snippet + "\n\n[Full email content from Gmail...]"
     );
   };
 
   const getSenderInitials = (sender: string) => {
-    const parts = sender.split("@")[0].split(".");
+    // Extract name from email format "Name <email@domain.com>" or just "email@domain.com"
+    const nameMatch = sender.match(/^([^<]+)</);
+    const name = nameMatch ? nameMatch[1].trim() : sender.split("@")[0];
+
+    const parts = name.split(/[\s\.]+/);
     if (parts.length >= 2) {
       return (parts[0][0] + parts[1][0]).toUpperCase();
     }
-    return sender.substring(0, 2).toUpperCase();
+    return name.substring(0, 2).toUpperCase();
   };
 
   const getSenderColor = (sender: string) => {
@@ -185,7 +144,24 @@ P.S. - Bring your appetite! 😄`,
     return colors[hash % colors.length];
   };
 
-  const unreadCount = emails.filter((email) => !email.isRead).length;
+  const unreadCount = emails.filter((email) => !email.is_read).length;
+
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          p: 3,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 2,
+        }}
+      >
+        <CircularProgress size={60} />
+        <Typography variant="h6">Loading emails...</Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ p: 3 }}>
@@ -203,22 +179,16 @@ P.S. - Bring your appetite! 😄`,
             📧 Emails
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Manage your inbox and stay connected
+            Your Gmail inbox - real-time integration
           </Typography>
         </Box>
-        {/* <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          sx={{
-            background: "linear-gradient(135deg, #00d4ff 0%, #0095cc 100%)",
-            "&:hover": {
-              background: "linear-gradient(135deg, #4de6ff 0%, #00d4ff 100%)",
-            },
-          }}
-        >
-          Compose
-        </Button> */}
       </Box>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
 
       {/* Stats Overview */}
       <Box
@@ -314,7 +284,7 @@ P.S. - Bring your appetite! 😄`,
                 "&:hover": {
                   backgroundColor: "rgba(0, 212, 255, 0.05)",
                 },
-                opacity: email.isRead ? 0.8 : 1,
+                opacity: email.is_read ? 0.8 : 1,
               }}
               onClick={() => handleEmailClick(email)}
             >
@@ -342,14 +312,14 @@ P.S. - Bring your appetite! 😄`,
                     <Typography
                       variant="h6"
                       sx={{
-                        fontWeight: email.isRead ? 400 : 600,
+                        fontWeight: email.is_read ? 400 : 600,
                         fontSize: "1.1rem",
                       }}
                     >
                       {email.subject}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {formatTime(email.timestamp)}
+                      {formatTime(email.date)}
                     </Typography>
                   </Box>
                 }
@@ -372,7 +342,7 @@ P.S. - Bring your appetite! 😄`,
               <Box
                 sx={{ display: "flex", flexDirection: "column", gap: 1, ml: 2 }}
               >
-                {!email.isRead && (
+                {!email.is_read && (
                   <Chip
                     label="NEW"
                     color="primary"
@@ -449,7 +419,7 @@ P.S. - Bring your appetite! 😄`,
                   fontSize: "1rem",
                 }}
               >
-                {getFullEmailContent(selectedEmail)}
+                {getEmailContent(selectedEmail)}
               </Typography>
             </DialogContent>
 

@@ -1,4 +1,4 @@
-// src/components/calendar/CalendarView.tsx - Replace the events state and functions
+// src/components/calendar/CalendarView.tsx
 import React, { useState, useEffect } from "react";
 import {
   Box,
@@ -15,6 +15,13 @@ import {
   CircularProgress,
   Alert,
   Snackbar,
+  ToggleButton,
+  ToggleButtonGroup,
+  Chip,
+  IconButton,
+  Menu,
+  MenuItem,
+  Divider,
 } from "@mui/material";
 import { CalendarEvent } from "../../types";
 import { calendarAPI } from "../../services/apiService";
@@ -26,6 +33,12 @@ import AddIcon from "@mui/icons-material/Add";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import EventIcon from "@mui/icons-material/Event";
+import GoogleIcon from "@mui/icons-material/Google";
+import StorageIcon from "@mui/icons-material/Storage";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import ScheduleIcon from "@mui/icons-material/Schedule";
+import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
 
 const CalendarView: React.FC = () => {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -33,10 +46,19 @@ const CalendarView: React.FC = () => {
     null
   );
   const [showNewEventDialog, setShowNewEventDialog] = useState(false);
+  const [eventType, setEventType] = useState<"local" | "google">("google");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [freeTimeSlots, setFreeTimeSlots] = useState<any[]>([]);
+  const [showFreeTime, setShowFreeTime] = useState(false);
+  const [eventMenuAnchor, setEventMenuAnchor] = useState<null | HTMLElement>(
+    null
+  );
+  const [selectedEventForMenu, setSelectedEventForMenu] =
+    useState<CalendarEvent | null>(null);
+
   const [newEvent, setNewEvent] = useState({
     title: "",
     description: "",
@@ -44,6 +66,7 @@ const CalendarView: React.FC = () => {
     date: new Date().toISOString().split("T")[0],
     startTime: "09:00",
     endTime: "10:00",
+    attendees: "",
   });
 
   // Fetch events from API
@@ -86,6 +109,11 @@ const CalendarView: React.FC = () => {
   };
 
   const getEventColor = (event: CalendarEvent) => {
+    // Check if it's a Google Calendar event
+    if (event.id && event.id.toString().startsWith("google_")) {
+      return "#4285f4"; // Google blue
+    }
+
     if (
       event.title.toLowerCase().includes("meeting") ||
       event.title.toLowerCase().includes("standup")
@@ -126,27 +154,52 @@ const CalendarView: React.FC = () => {
         );
         const endDateTime = new Date(`${newEvent.date}T${newEvent.endTime}`);
 
-        const eventData = convertFrontendEventToApi({
-          title: newEvent.title,
-          start: startDateTime,
-          end: endDateTime,
-          description: newEvent.description || undefined,
-          location: newEvent.location || undefined,
-        });
+        if (eventType === "google") {
+          // Create Google Calendar event
+          const googleEventData = {
+            title: newEvent.title,
+            description: newEvent.description || "",
+            location: newEvent.location || "",
+            start_time: startDateTime.toISOString(),
+            end_time: endDateTime.toISOString(),
+            timezone: "America/Chicago",
+            attendees: newEvent.attendees
+              ? newEvent.attendees.split(",").map((email) => email.trim())
+              : [],
+          };
 
-        // Add additional API-specific fields
-        const apiEventData = {
-          ...eventData,
-          priority: "medium" as const,
-        };
+          const response = await calendarAPI.createGoogleEvent(googleEventData);
 
-        const response = await calendarAPI.createEvent(apiEventData);
-        const createdEvent = convertApiEventToFrontend(response.data);
+          setSnackbarMessage(
+            `Google Calendar event "${newEvent.title}" created successfully!`
+          );
+          setSnackbarOpen(true);
+        } else {
+          // Create local event
+          const eventData = convertFrontendEventToApi({
+            title: newEvent.title,
+            start: startDateTime,
+            end: endDateTime,
+            description: newEvent.description || undefined,
+            location: newEvent.location || undefined,
+          });
 
-        setEvents((prev) => [...prev, createdEvent]);
+          const apiEventData = {
+            ...eventData,
+            priority: "medium" as const,
+          };
+
+          const response = await calendarAPI.createEvent(apiEventData);
+          const createdEvent = convertApiEventToFrontend(response.data);
+          setEvents((prev) => [...prev, createdEvent]);
+
+          setSnackbarMessage(
+            `Local event "${newEvent.title}" created successfully!`
+          );
+          setSnackbarOpen(true);
+        }
+
         setShowNewEventDialog(false);
-        setSnackbarMessage(`Event "${newEvent.title}" created successfully!`);
-        setSnackbarOpen(true);
 
         // Reset form
         setNewEvent({
@@ -156,12 +209,110 @@ const CalendarView: React.FC = () => {
           date: new Date().toISOString().split("T")[0],
           startTime: "09:00",
           endTime: "10:00",
+          attendees: "",
         });
-      } catch (error) {
+
+        // Refresh events
+        // setTimeout(() => {
+        //   window.location.reload();
+        // }, 1000);
+        const refreshEvents = async () => {
+          try {
+            const response = await calendarAPI.getEvents();
+            const apiEvents = response.data.results;
+            const convertedEvents = apiEvents.map(convertApiEventToFrontend);
+            setEvents(convertedEvents);
+          } catch (err) {
+            console.error("Error refreshing events:", err);
+          }
+        };
+
+        refreshEvents();
+      } catch (error: any) {
         console.error("Error creating event:", error);
-        setSnackbarMessage("Failed to create event. Please try again.");
+        setSnackbarMessage(
+          `Failed to create ${eventType} event. ${
+            error.response?.data?.error || "Please try again."
+          }`
+        );
         setSnackbarOpen(true);
       }
+    }
+  };
+
+  const handleFindFreeTime = async () => {
+    try {
+      setLoading(true);
+      const response = await calendarAPI.findFreeTime({
+        duration: 60,
+        days_ahead: 7,
+      });
+      setFreeTimeSlots(response.data.free_slots || []);
+      setShowFreeTime(true);
+      setLoading(false);
+    } catch (error: any) {
+      console.error("Error finding free time:", error);
+      setSnackbarMessage("Failed to find free time slots");
+      setSnackbarOpen(true);
+      setLoading(false);
+    }
+  };
+
+  const handleEventMenuClick = (
+    event: React.MouseEvent<HTMLElement>,
+    calendarEvent: CalendarEvent
+  ) => {
+    event.stopPropagation();
+    setEventMenuAnchor(event.currentTarget);
+    setSelectedEventForMenu(calendarEvent);
+  };
+
+  const handleEventMenuClose = () => {
+    setEventMenuAnchor(null);
+    setSelectedEventForMenu(null);
+  };
+
+  // REPLACE the setTimeout with proper refresh:
+  const handleDeleteEvent = async () => {
+    if (!selectedEventForMenu) return;
+
+    try {
+      if (
+        selectedEventForMenu.id &&
+        selectedEventForMenu.id.toString().startsWith("google_")
+      ) {
+        // Delete Google Calendar event
+        const googleEventId = selectedEventForMenu.id
+          .toString()
+          .replace("google_", "");
+        await calendarAPI.deleteGoogleEvent(googleEventId);
+        setSnackbarMessage("Google Calendar event deleted successfully!");
+      } else {
+        // Delete local event
+        await calendarAPI.deleteEvent(Number(selectedEventForMenu.id));
+        setSnackbarMessage("Local event deleted successfully!");
+      }
+
+      setSnackbarOpen(true);
+      handleEventMenuClose();
+
+      // REPLACE setTimeout with proper refresh:
+      const refreshEvents = async () => {
+        try {
+          const response = await calendarAPI.getEvents();
+          const apiEvents = response.data.results;
+          const convertedEvents = apiEvents.map(convertApiEventToFrontend);
+          setEvents(convertedEvents);
+        } catch (err) {
+          console.error("Error refreshing events:", err);
+        }
+      };
+
+      refreshEvents();
+    } catch (error: any) {
+      console.error("Error deleting event:", error);
+      setSnackbarMessage("Failed to delete event");
+      setSnackbarOpen(true);
     }
   };
 
@@ -174,6 +325,7 @@ const CalendarView: React.FC = () => {
       date: new Date().toISOString().split("T")[0],
       startTime: "09:00",
       endTime: "10:00",
+      attendees: "",
     });
   };
 
@@ -212,22 +364,32 @@ const CalendarView: React.FC = () => {
             📅 Calendar
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Manage your schedule and upcoming events
+            Manage your schedule with Google Calendar integration
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleNewEvent}
-          sx={{
-            background: "linear-gradient(135deg, #00d4ff 0%, #0095cc 100%)",
-            "&:hover": {
-              background: "linear-gradient(135deg, #4de6ff 0%, #00d4ff 100%)",
-            },
-          }}
-        >
-          New Event
-        </Button>
+        <Box sx={{ display: "flex", gap: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<ScheduleIcon />}
+            onClick={handleFindFreeTime}
+            sx={{ borderColor: "#00d4ff", color: "#00d4ff" }}
+          >
+            Find Free Time
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleNewEvent}
+            sx={{
+              background: "linear-gradient(135deg, #00d4ff 0%, #0095cc 100%)",
+              "&:hover": {
+                background: "linear-gradient(135deg, #4de6ff 0%, #00d4ff 100%)",
+              },
+            }}
+          >
+            New Event
+          </Button>
+        </Box>
       </Box>
 
       {error && (
@@ -287,12 +449,38 @@ const CalendarView: React.FC = () => {
                   onClick={() => setSelectedEvent(event)}
                 >
                   <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
-                    <Typography
-                      variant="subtitle1"
-                      sx={{ fontWeight: 600, mb: 1 }}
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        mb: 1,
+                      }}
                     >
-                      {event.title}
-                    </Typography>
+                      <Typography
+                        variant="subtitle1"
+                        sx={{ fontWeight: 600, flex: 1 }}
+                      >
+                        {event.title}
+                      </Typography>
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                      >
+                        {event.id &&
+                        event.id.toString().startsWith("google_") ? (
+                          <GoogleIcon sx={{ fontSize: 16, color: "#4285f4" }} />
+                        ) : (
+                          <StorageIcon sx={{ fontSize: 16, color: "#888" }} />
+                        )}
+                        <IconButton
+                          size="small"
+                          onClick={(e) => handleEventMenuClick(e, event)}
+                          sx={{ opacity: 0.7 }}
+                        >
+                          <MoreVertIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </Box>
 
                     <Box
                       sx={{
@@ -329,6 +517,73 @@ const CalendarView: React.FC = () => {
         ))}
       </Box>
 
+      {/* Event Menu */}
+      <Menu
+        anchorEl={eventMenuAnchor}
+        open={Boolean(eventMenuAnchor)}
+        onClose={handleEventMenuClose}
+      >
+        <MenuItem onClick={handleEventMenuClose}>
+          <EditIcon sx={{ mr: 1 }} />
+          Edit Event
+        </MenuItem>
+        <MenuItem onClick={handleDeleteEvent} sx={{ color: "error.main" }}>
+          <DeleteIcon sx={{ mr: 1 }} />
+          Delete Event
+        </MenuItem>
+      </Menu>
+
+      {/* Free Time Dialog */}
+      <Dialog
+        open={showFreeTime}
+        onClose={() => setShowFreeTime(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <ScheduleIcon color="primary" />
+            <Typography variant="h6">Available Time Slots</Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {freeTimeSlots.length === 0 ? (
+            <Typography>
+              No free time slots found in the next 7 days.
+            </Typography>
+          ) : (
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {freeTimeSlots.map((slot, index) => (
+                <Paper
+                  key={index}
+                  sx={{ p: 2, border: "1px solid rgba(0, 212, 255, 0.2)" }}
+                >
+                  <Typography variant="h6" color="primary">
+                    {new Date(slot.date).toLocaleDateString("en-US", {
+                      weekday: "long",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </Typography>
+                  <Typography variant="body1">
+                    {slot.start_time} - {slot.end_time}
+                  </Typography>
+                  <Chip
+                    label={`${slot.duration_minutes} minutes available`}
+                    color="success"
+                    size="small"
+                    sx={{ mt: 1 }}
+                  />
+                </Paper>
+              ))}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowFreeTime(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
       {/* New Event Dialog */}
       <Dialog
         open={showNewEventDialog}
@@ -344,6 +599,29 @@ const CalendarView: React.FC = () => {
         </DialogTitle>
         <DialogContent>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
+            {/* Event Type Toggle */}
+            <Box>
+              <Typography variant="subtitle2" gutterBottom>
+                Event Type
+              </Typography>
+              <ToggleButtonGroup
+                value={eventType}
+                exclusive
+                onChange={(e, newType) => newType && setEventType(newType)}
+                aria-label="event type"
+                size="small"
+              >
+                <ToggleButton value="google" aria-label="google calendar">
+                  <GoogleIcon sx={{ mr: 1 }} />
+                  Google Calendar
+                </ToggleButton>
+                <ToggleButton value="local" aria-label="local calendar">
+                  <StorageIcon sx={{ mr: 1 }} />
+                  Local Only
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+
             <TextField
               fullWidth
               label="Event Title"
@@ -376,6 +654,21 @@ const CalendarView: React.FC = () => {
                 setNewEvent((prev) => ({ ...prev, location: e.target.value }))
               }
             />
+
+            {eventType === "google" && (
+              <TextField
+                fullWidth
+                label="Attendees (comma-separated emails)"
+                value={newEvent.attendees}
+                onChange={(e) =>
+                  setNewEvent((prev) => ({
+                    ...prev,
+                    attendees: e.target.value,
+                  }))
+                }
+                placeholder="email1@example.com, email2@example.com"
+              />
+            )}
 
             <TextField
               fullWidth
@@ -423,10 +716,15 @@ const CalendarView: React.FC = () => {
             variant="contained"
             disabled={!newEvent.title.trim()}
             sx={{
-              background: "linear-gradient(135deg, #00d4ff 0%, #0095cc 100%)",
+              background:
+                eventType === "google"
+                  ? "linear-gradient(135deg, #4285f4 0%, #1976d2 100%)"
+                  : "linear-gradient(135deg, #00d4ff 0%, #0095cc 100%)",
             }}
           >
-            Create Event
+            {eventType === "google"
+              ? "Create in Google Calendar"
+              : "Create Local Event"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -442,10 +740,30 @@ const CalendarView: React.FC = () => {
           <>
             <DialogTitle sx={{ pb: 1 }}>
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <EventIcon color="primary" />
+                {selectedEvent.id &&
+                selectedEvent.id.toString().startsWith("google_") ? (
+                  <GoogleIcon color="primary" />
+                ) : (
+                  <StorageIcon color="primary" />
+                )}
                 <Typography variant="h6" component="div">
                   {selectedEvent.title}
                 </Typography>
+                <Chip
+                  label={
+                    selectedEvent.id &&
+                    selectedEvent.id.toString().startsWith("google_")
+                      ? "Google Calendar"
+                      : "Local Event"
+                  }
+                  size="small"
+                  color={
+                    selectedEvent.id &&
+                    selectedEvent.id.toString().startsWith("google_")
+                      ? "primary"
+                      : "default"
+                  }
+                />
               </Box>
             </DialogTitle>
             <DialogContent>

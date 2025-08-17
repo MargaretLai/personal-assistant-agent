@@ -6,6 +6,7 @@ from authentication.models import GoogleToken
 import base64
 import email
 from email.mime.text import MIMEText
+from authentication.views import refresh_google_token
 
 
 class GmailService:
@@ -16,6 +17,10 @@ class GmailService:
     def _get_service(self):
         """Get Gmail service with user's credentials"""
         try:
+            # Refresh token if needed
+            if not refresh_google_token(self.user):
+                raise Exception(f"Unable to refresh Gmail token for {self.user.email}")
+
             google_token = GoogleToken.objects.get(user=self.user)
 
             credentials = Credentials(
@@ -31,7 +36,9 @@ class GmailService:
             return service
 
         except GoogleToken.DoesNotExist:
-            raise Exception("User doesn't have Google authentication")
+            raise Exception(
+                f"User {self.user.email} doesn't have Google authentication. Please re-authenticate with Google."
+            )
         except Exception as e:
             raise Exception(f"Failed to create Gmail service: {str(e)}")
 
