@@ -13,11 +13,15 @@ import {
   Divider,
   CircularProgress,
   Alert,
+  Snackbar,
+  Tooltip,
 } from "@mui/material";
 import { emailAPI } from "../../services/apiService";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import MarkEmailReadIcon from "@mui/icons-material/MarkEmailRead";
+import MarkEmailUnreadIcon from "@mui/icons-material/MarkEmailUnread";
+import ReplyIcon from "@mui/icons-material/Reply";
 
 interface Email {
   id: string;
@@ -35,6 +39,12 @@ const EmailPreview: React.FC = () => {
   const [expandedEmail, setExpandedEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState({ 
+    open: false, 
+    message: "", 
+    severity: "success" as "success" | "error" 
+  });
 
   // Fetch recent emails from API
   useEffect(() => {
@@ -55,6 +65,10 @@ const EmailPreview: React.FC = () => {
 
     fetchRecentEmails();
   }, []);
+
+  const showSnackbar = (message: string, severity: "success" | "error" = "success") => {
+    setSnackbar({ open: true, message, severity });
+  };
 
   const formatTime = (dateString: string) => {
     try {
@@ -78,13 +92,48 @@ const EmailPreview: React.FC = () => {
     setExpandedEmail(expandedEmail === emailId ? null : emailId);
   };
 
-  const handleMarkAsRead = (emailId: string, event: React.MouseEvent) => {
+  const handleMarkAsRead = async (emailId: string, event: React.MouseEvent) => {
     event.stopPropagation(); // Prevent email expansion
-    setEmails((prevEmails) =>
-      prevEmails.map((email) =>
-        email.id === emailId ? { ...email, isRead: true } : email
-      )
-    );
+    
+    try {
+      setActionLoading(true);
+      await emailAPI.markAsRead(emailId);
+      
+      setEmails((prevEmails) =>
+        prevEmails.map((email) =>
+          email.id === emailId ? { ...email, isRead: true } : email
+        )
+      );
+      
+      showSnackbar("Email marked as read");
+    } catch (error) {
+      console.error("Error marking email as read:", error);
+      showSnackbar("Failed to mark email as read", "error");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleMarkAsUnread = async (emailId: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent email expansion
+    
+    try {
+      setActionLoading(true);
+      await emailAPI.markAsUnread(emailId);
+      
+      setEmails((prevEmails) =>
+        prevEmails.map((email) =>
+          email.id === emailId ? { ...email, isRead: false } : email
+        )
+      );
+      
+      showSnackbar("Email marked as unread");
+    } catch (error) {
+      console.error("Error marking email as unread:", error);
+      showSnackbar("Failed to mark email as unread", "error");
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const getEmailContent = (email: Email) => {
@@ -125,134 +174,180 @@ const EmailPreview: React.FC = () => {
   }
 
   return (
-    <Paper elevation={2} sx={{ p: 2, height: "250px", overflow: "auto" }}>
-      <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-        <Typography variant="h6" gutterBottom sx={{ mb: 0, mr: 1 }}>
-          Recent Emails
-        </Typography>
-        {unreadEmails.length > 0 && (
-          <Badge badgeContent={unreadEmails.length} color="primary" />
-        )}
-      </Box>
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-
-      {emails.length === 0 ? (
-        <Box sx={{ textAlign: "center", py: 4 }}>
-          <MarkEmailReadIcon
-            sx={{ fontSize: 48, color: "success.main", mb: 1 }}
-          />
-          <Typography variant="body2" color="text.secondary">
-            {error ? "Unable to load emails" : "No recent emails"}
+    <>
+      <Paper elevation={2} sx={{ p: 2, height: "250px", overflow: "auto" }}>
+        <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+          <Typography variant="h6" gutterBottom sx={{ mb: 0, mr: 1 }}>
+            Recent Emails
           </Typography>
+          {unreadEmails.length > 0 && (
+            <Badge badgeContent={unreadEmails.length} color="primary" />
+          )}
         </Box>
-      ) : (
-        <List dense>
-          {emails.slice(0, 3).map((email) => (
-            <Box key={email.id}>
-              <ListItem
-                sx={{
-                  px: 0,
-                  cursor: "pointer",
-                  borderRadius: 1,
-                  "&:hover": {
-                    backgroundColor: "rgba(0, 212, 255, 0.1)",
-                  },
-                }}
-                onClick={() => handleEmailClick(email.id)}
-              >
-                <ListItemText
-                  primary={
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <Typography
-                        variant="subtitle2"
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        {emails.length === 0 ? (
+          <Box sx={{ textAlign: "center", py: 4 }}>
+            <MarkEmailReadIcon
+              sx={{ fontSize: 48, color: "success.main", mb: 1 }}
+            />
+            <Typography variant="body2" color="text.secondary">
+              {error ? "Unable to load emails" : "No recent emails"}
+            </Typography>
+          </Box>
+        ) : (
+          <List dense>
+            {emails.slice(0, 3).map((email) => (
+              <Box key={email.id}>
+                <ListItem
+                  sx={{
+                    px: 0,
+                    cursor: "pointer",
+                    borderRadius: 1,
+                    "&:hover": {
+                      backgroundColor: "rgba(0, 212, 255, 0.1)",
+                    },
+                  }}
+                  onClick={() => handleEmailClick(email.id)}
+                >
+                  <ListItemText
+                    primary={
+                      <Box
                         sx={{
-                          fontWeight: email.isRead ? "normal" : "bold",
-                          flex: 1,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
                         }}
                       >
-                        {email.subject}
-                      </Typography>
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
-                      >
-                        <IconButton
-                          size="small"
-                          onClick={(e) => handleMarkAsRead(email.id, e)}
-                          sx={{ opacity: 0.7 }}
+                        <Typography
+                          variant="subtitle2"
+                          sx={{
+                            fontWeight: email.isRead ? "normal" : "bold",
+                            flex: 1,
+                          }}
                         >
-                          <MarkEmailReadIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton size="small" sx={{ opacity: 0.7 }}>
-                          {expandedEmail === email.id ? (
-                            <ExpandLessIcon fontSize="small" />
-                          ) : (
-                            <ExpandMoreIcon fontSize="small" />
-                          )}
-                        </IconButton>
-                      </Box>
-                    </Box>
-                  }
-                  secondary={
-                    <Box>
-                      <Typography
-                        variant="caption"
-                        display="block"
-                        color="primary"
-                      >
-                        {email.sender}
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        display="block"
-                        sx={{ mt: 0.5 }}
-                      >
-                        {email.snippet.substring(0, 60)}...
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {formatTime(email.timestamp)}
-                      </Typography>
-                    </Box>
-                  }
-                />
-              </ListItem>
+                          {email.subject}
+                        </Typography>
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                        >
+                          {/* Read/Unread Toggle */}
+                          <Tooltip title={email.isRead ? "Mark as unread" : "Mark as read"}>
+                            <IconButton
+                              size="small"
+                              onClick={(e) => 
+                                email.isRead 
+                                  ? handleMarkAsUnread(email.id, e) 
+                                  : handleMarkAsRead(email.id, e)
+                              }
+                              sx={{ opacity: 0.7 }}
+                              disabled={actionLoading}
+                            >
+                              {email.isRead ? (
+                                <MarkEmailUnreadIcon fontSize="small" />
+                              ) : (
+                                <MarkEmailReadIcon fontSize="small" />
+                              )}
+                            </IconButton>
+                          </Tooltip>
 
-              <Collapse
-                in={expandedEmail === email.id}
-                timeout="auto"
-                unmountOnExit
-              >
-                <Box sx={{ pl: 2, pr: 2, pb: 2 }}>
-                  <Divider sx={{ mb: 2 }} />
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      whiteSpace: "pre-line",
-                      backgroundColor: "rgba(0, 0, 0, 0.1)",
-                      p: 2,
-                      borderRadius: 1,
-                      fontSize: "0.85rem",
-                    }}
-                  >
-                    {getEmailContent(email)}
-                  </Typography>
-                </Box>
-              </Collapse>
-            </Box>
-          ))}
-        </List>
-      )}
-    </Paper>
+                          {/* Reply Button */}
+                          <Tooltip title="Reply">
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // For now, just show a message - could open reply dialog
+                                showSnackbar("Reply feature - go to full email view for reply", "success");
+                              }}
+                              sx={{ opacity: 0.7 }}
+                            >
+                              <ReplyIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+
+                          {/* Expand/Collapse */}
+                          <IconButton size="small" sx={{ opacity: 0.7 }}>
+                            {expandedEmail === email.id ? (
+                              <ExpandLessIcon fontSize="small" />
+                            ) : (
+                              <ExpandMoreIcon fontSize="small" />
+                            )}
+                          </IconButton>
+                        </Box>
+                      </Box>
+                    }
+                    secondary={
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          display="block"
+                          color="primary"
+                        >
+                          {email.sender}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          display="block"
+                          sx={{ mt: 0.5 }}
+                        >
+                          {email.snippet.substring(0, 60)}...
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {formatTime(email.timestamp)}
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                </ListItem>
+
+                <Collapse
+                  in={expandedEmail === email.id}
+                  timeout="auto"
+                  unmountOnExit
+                >
+                  <Box sx={{ pl: 2, pr: 2, pb: 2 }}>
+                    <Divider sx={{ mb: 2 }} />
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        whiteSpace: "pre-line",
+                        backgroundColor: "rgba(0, 0, 0, 0.1)",
+                        p: 2,
+                        borderRadius: 1,
+                        fontSize: "0.85rem",
+                      }}
+                    >
+                      {getEmailContent(email)}
+                    </Typography>
+                  </Box>
+                </Collapse>
+              </Box>
+            ))}
+          </List>
+        )}
+      </Paper>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert 
+          onClose={() => setSnackbar({ ...snackbar, open: false })} 
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </>
   );
 };
 

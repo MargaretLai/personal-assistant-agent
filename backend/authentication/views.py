@@ -149,7 +149,7 @@ def google_oauth(request):
     params = {
         "client_id": settings.GOOGLE_OAUTH2_CLIENT_ID,
         "redirect_uri": settings.GOOGLE_OAUTH2_REDIRECT_URI,
-        "scope": "openid email profile https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.readonly",
+        "scope": "openid email profile https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify",
         "response_type": "code",
         "access_type": "offline",
         "prompt": "consent",

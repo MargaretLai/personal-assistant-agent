@@ -161,6 +161,7 @@ export const aiAPI = {
 };
 
 // Email API calls - FIXED: Changed 'api' to 'apiClient'
+// Email API calls - UPDATED with new email actions
 export const emailAPI = {
   getEmails: (params?: { max_results?: number; query?: string }) => {
     const queryString = params
@@ -172,6 +173,25 @@ export const emailAPI = {
   getUnreadEmails: () => apiClient.get("/emails/emails/unread/"),
 
   getRecentEmails: () => apiClient.get("/emails/emails/recent/"),
+
+  // NEW: Mark email as read
+  markAsRead: (emailId: string) =>
+    apiClient.post(`/emails/emails/${emailId}/mark-read/`),
+
+  // NEW: Mark email as unread
+  markAsUnread: (emailId: string) =>
+    apiClient.post(`/emails/emails/${emailId}/mark-unread/`),
+
+  // NEW: Compose and send new email
+  composeEmail: (emailData: {
+    to_email: string;
+    subject: string;
+    body: string;
+  }) => apiClient.post("/emails/emails/compose/", emailData),
+
+  // NEW: Reply to existing email
+  replyToEmail: (emailId: string, replyData: { body: string }) =>
+    apiClient.post(`/emails/emails/${emailId}/reply/`, replyData),
 };
 
 // Helper function to set auth token
