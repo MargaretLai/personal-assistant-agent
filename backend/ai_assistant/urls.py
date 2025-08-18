@@ -17,9 +17,28 @@ Including another URLconf
 
 # backend/ai_assistant/urls.py
 from django.contrib import admin
+from django.http import JsonResponse
 from django.urls import path, include
+from django.db import connection
+
+
+def health_check(request):
+    return JsonResponse({"status": "ok", "message": "Django backend is running"})
+
+
+def db_check(request):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            result = cursor.fetchone()
+        return JsonResponse({"database": "connected", "result": result})
+    except Exception as e:
+        return JsonResponse({"database": "error", "error": str(e)})
+
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/v1/", include("api.urls")),
+    path("", health_check, name="health_check"),
+    path("db-test/", db_check, name="db_check"),
 ]
