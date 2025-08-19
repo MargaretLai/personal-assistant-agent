@@ -58,7 +58,7 @@ export const convertFrontendTaskToApi = (task: Partial<Task>) => {
   }
 
   // Set estimated_hours to undefined if not provided
-  apiTask.estimated_hours = task.estimatedHours || undefined;
+  apiTask.estimated_hours = undefined;
 
   return apiTask;
 };
