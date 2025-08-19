@@ -28,8 +28,14 @@ export const convertFrontendEventToApi = (event: Omit<CalendarEvent, "id">) => {
 
 // Convert API task to frontend format
 export const convertApiTaskToFrontend = (apiTask: any): Task => {
+  // Ensure we get a proper numeric ID
+  let taskId = "";
+  if (apiTask.id !== undefined && apiTask.id !== null) {
+    taskId = apiTask.id.toString();
+  }
+
   return {
-    id: apiTask.id?.toString() || "", // Fixed: Safe conversion with fallback
+    id: taskId,
     title: apiTask.title || "",
     completed: apiTask.status === "completed",
     priority: (apiTask.priority as "high" | "medium" | "low") || "medium",

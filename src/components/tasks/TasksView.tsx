@@ -117,18 +117,37 @@ const TasksView: React.FC = () => {
   const handleTaskComplete = async (taskId: string) => {
     try {
       const task = tasks.find((t) => t.id === taskId);
-      if (!task) return;
+      if (!task) {
+        console.error("Task not found:", taskId);
+        return;
+      }
+
+      console.log("Task ID:", taskId, "Parsed:", parseInt(taskId));
+
+      // Check if taskId is a valid number
+      const numericTaskId = parseInt(taskId);
+      if (isNaN(numericTaskId)) {
+        console.error("Invalid task ID:", taskId);
+        setSnackbarMessage("Invalid task ID. Please refresh the page.");
+        setSnackbarOpen(true);
+        return;
+      }
 
       const wasCompleted = task.completed;
       const newCompletedState = !wasCompleted;
 
-      // Update task via API
-      const taskData = convertFrontendTaskToApi({
-        ...task,
-        completed: newCompletedState,
-      });
-
-      await tasksAPI.updateTask(parseInt(taskId), taskData);
+      // For completed tasks, use mark complete API, for uncompleting use update API
+      if (newCompletedState) {
+        // Mark as complete
+        await tasksAPI.markComplete(numericTaskId);
+      } else {
+        // Mark as pending (uncomplete) - use update API
+        const taskData = convertFrontendTaskToApi({
+          ...task,
+          completed: false,
+        });
+        await tasksAPI.updateTask(numericTaskId, taskData);
+      }
 
       // Update local state
       setTasks((prevTasks) =>
@@ -247,8 +266,17 @@ const TasksView: React.FC = () => {
 
   const handleDeleteTask = async (taskId: string) => {
     try {
+      // Check if taskId is a valid number
+      const numericTaskId = parseInt(taskId);
+      if (isNaN(numericTaskId)) {
+        console.error("Invalid task ID for deletion:", taskId);
+        setSnackbarMessage("Invalid task ID. Please refresh the page.");
+        setSnackbarOpen(true);
+        return;
+      }
+
       // Call API to delete task
-      await tasksAPI.deleteTask(parseInt(taskId));
+      await tasksAPI.deleteTask(numericTaskId);
 
       // Remove task from local state
       const deletedTask = tasks.find((task) => task.id === taskId);
