@@ -42,7 +42,7 @@ apiClient.interceptors.response.use(
       console.log(
         "Google authentication expired, redirecting to re-authenticate..."
       );
-      window.location.href = "/api/v1/auth/google/";
+      window.location.href = "/login"; // Changed from server redirect to login page
     }
     return Promise.reject(error);
   }
@@ -64,6 +64,10 @@ export const authAPI = {
   logout: () => apiClient.post("/auth/logout/"),
 
   getProfile: () => apiClient.get("/auth/profile/"),
+
+  // NEW: Client-side Google OAuth method
+  googleOAuth: (data: { id_token: string }) =>
+    apiClient.post("/auth/google/", data),
 };
 
 // Calendar API calls

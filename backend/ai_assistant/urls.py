@@ -17,7 +17,7 @@ Including another URLconf
 
 # backend/ai_assistant/urls.py
 from django.contrib import admin
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.urls import path, include
 from django.db import connection
 
@@ -36,9 +36,16 @@ def db_check(request):
         return JsonResponse({"database": "error", "error": str(e)})
 
 
+def google_verification(request):
+    return HttpResponse("google-site-verification: google9cec98a809f186e6.html")
+
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/v1/", include("api.urls")),
     path("", health_check, name="health_check"),
     path("db-test/", db_check, name="db_check"),
+    path(
+        "google9cec98a809f186e6.html", google_verification, name="google_verification"
+    ),
 ]

@@ -117,7 +117,7 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "https://personal-assistant-agent-h0a26q3l7-margaret-lais-projects.vercel.app",
+    "https://personal-assistant-agent-sgi6zxz58-margaret-lais-projects.vercel.app",
     "https://backend-production-a611.up.railway.app",
 ]
 
@@ -210,7 +210,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://accounts.google.com",
-    "https://your-frontend-will-be-here.vercel.app",  # We'll update this later
+    "https://personal-assistant-agent-sgi6zxz58-margaret-lais-projects.vercel.app",
 ]
 # SECURE_SSL_REDIRECT = True
 # SESSION_COOKIE_SECURE = True
