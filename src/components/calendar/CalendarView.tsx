@@ -21,7 +21,6 @@ import {
   IconButton,
   Menu,
   MenuItem,
-  Divider,
 } from "@mui/material";
 import { CalendarEvent } from "../../types";
 import { calendarAPI } from "../../services/apiService";
@@ -38,7 +37,6 @@ import StorageIcon from "@mui/icons-material/Storage";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import DeleteIcon from "@mui/icons-material/Delete";
-import EditIcon from "@mui/icons-material/Edit";
 
 const CalendarView: React.FC = () => {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -213,9 +211,6 @@ const CalendarView: React.FC = () => {
         });
 
         // Refresh events
-        // setTimeout(() => {
-        //   window.location.reload();
-        // }, 1000);
         const refreshEvents = async () => {
           try {
             const response = await calendarAPI.getEvents();
@@ -272,7 +267,6 @@ const CalendarView: React.FC = () => {
     setSelectedEventForMenu(null);
   };
 
-  // REPLACE the setTimeout with proper refresh:
   const handleDeleteEvent = async () => {
     if (!selectedEventForMenu) return;
 
@@ -296,7 +290,7 @@ const CalendarView: React.FC = () => {
       setSnackbarOpen(true);
       handleEventMenuClose();
 
-      // REPLACE setTimeout with proper refresh:
+      // Refresh events
       const refreshEvents = async () => {
         try {
           const response = await calendarAPI.getEvents();
@@ -517,16 +511,12 @@ const CalendarView: React.FC = () => {
         ))}
       </Box>
 
-      {/* Event Menu */}
+      {/* Event Menu - Removed Edit Option */}
       <Menu
         anchorEl={eventMenuAnchor}
         open={Boolean(eventMenuAnchor)}
         onClose={handleEventMenuClose}
       >
-        <MenuItem onClick={handleEventMenuClose}>
-          <EditIcon sx={{ mr: 1 }} />
-          Edit Event
-        </MenuItem>
         <MenuItem onClick={handleDeleteEvent} sx={{ color: "error.main" }}>
           <DeleteIcon sx={{ mr: 1 }} />
           Delete Event

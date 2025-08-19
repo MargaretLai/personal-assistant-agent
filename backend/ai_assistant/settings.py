@@ -202,7 +202,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://accounts.google.com",
-    "https://personal-assistant-agent-an51htr2t-margaret-lais-projects.vercel.app",
+    "https://personal-assistant-agent-k6r797vhr-margaret-lais-projects.vercel.app",
 ]
 # SECURE_SSL_REDIRECT = True
 # SESSION_COOKIE_SECURE = True
