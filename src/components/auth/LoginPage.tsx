@@ -194,3 +194,5 @@ const LoginPage: React.FC = () => {
     </Container>
   );
 };
+
+export default LoginPage;
