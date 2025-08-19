@@ -228,6 +228,40 @@ const TasksView: React.FC = () => {
     });
   };
 
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      // Call API to delete task
+      await tasksAPI.deleteTask(parseInt(taskId));
+
+      // Remove task from local state
+      setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
+
+      // Update stats
+      const deletedTask = tasks.find((task) => task.id === taskId);
+      if (deletedTask) {
+        setTaskStats((prev) => ({
+          ...prev,
+          total: prev.total - 1,
+          completed: deletedTask.completed
+            ? prev.completed - 1
+            : prev.completed,
+          pending: !deletedTask.completed ? prev.pending - 1 : prev.pending,
+          completion_rate:
+            prev.total > 1
+              ? Math.round((prev.completed / (prev.total - 1)) * 100)
+              : 0,
+        }));
+
+        setSnackbarMessage(`Task "${deletedTask.title}" deleted successfully!`);
+        setSnackbarOpen(true);
+      }
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      setSnackbarMessage("Failed to delete task. Please try again.");
+      setSnackbarOpen(true);
+    }
+  };
+
   if (loading) {
     return (
       <Box
@@ -459,10 +493,7 @@ const TasksView: React.FC = () => {
                 <IconButton
                   color="error"
                   sx={{ opacity: 0.7, "&:hover": { opacity: 1 } }}
-                  onClick={() => {
-                    // TODO: Implement task deletion
-                    console.log("Delete task:", task.id);
-                  }}
+                  onClick={() => handleDeleteTask(task.id)}
                 >
                   <DeleteIcon />
                 </IconButton>
