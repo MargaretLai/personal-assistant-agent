@@ -69,7 +69,6 @@ export const convertApiEmailToFrontend = (apiEmail: any): Email => {
     id: apiEmail.id?.toString() || "",
     subject: apiEmail.subject || "No Subject",
     sender: apiEmail.sender || "Unknown Sender",
-    recipient: apiEmail.recipient || "",
     body: apiEmail.body || "",
     timestamp: apiEmail.timestamp ? new Date(apiEmail.timestamp) : new Date(),
     isRead: apiEmail.isRead || false,
