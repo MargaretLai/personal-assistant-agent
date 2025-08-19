@@ -2,10 +2,14 @@
 import axios from "axios";
 
 // Base API configuration
-const API_BASE_URL = "http://127.0.0.1:8000/api/v1";
+// const API_BASE_URL = "http://127.0.0.1:8000/api/v1";
+export const API_BASE_URL =
+  process.env.NODE_ENV === "production"
+    ? "https://backend-production-a611.up.railway.app/api/v1"
+    : "http://127.0.0.1:8000/api/v1";
 
 // Create axios instance with default config
-const apiClient = axios.create({
+export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
@@ -206,10 +210,10 @@ export const clearAuthToken = () => {
   delete apiClient.defaults.headers.Authorization;
 };
 
-// For development: Set your token automatically
-// TODO: Remove this in production and implement proper login
-if (process.env.NODE_ENV === "development") {
-  setAuthToken("ec2142ff3feb160343cfd2d093562c28d3779e1e"); // Your token
-}
+// // For development: Set your token automatically
+// // TODO: Remove this in production and implement proper login
+// if (process.env.NODE_ENV === "development") {
+//   setAuthToken("ec2142ff3feb160343cfd2d093562c28d3779e1e"); // Your token
+// }
 
 export default apiClient;

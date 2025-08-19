@@ -117,6 +117,8 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://personal-assistant-agent-h0a26q3l7-margaret-lais-projects.vercel.app",
+    "https://backend-production-a611.up.railway.app",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
