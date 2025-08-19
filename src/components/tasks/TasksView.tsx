@@ -170,15 +170,23 @@ const TasksView: React.FC = () => {
   const handleSaveNewTask = async () => {
     if (newTask.title.trim()) {
       try {
-        const taskData = convertFrontendTaskToApi({
-          title: newTask.title,
-          description: newTask.description || undefined,
+        // Create a proper task object for conversion
+        const taskToCreate: Partial<Task> = {
+          title: newTask.title.trim(),
+          description: newTask.description.trim() || undefined,
           priority: newTask.priority,
           completed: false,
           dueDate: newTask.dueDate ? new Date(newTask.dueDate) : undefined,
-        });
+        };
+
+        console.log("Creating task:", taskToCreate); // Debug log
+
+        const taskData = convertFrontendTaskToApi(taskToCreate);
+        console.log("Converted task data:", taskData); // Debug log
 
         const response = await tasksAPI.createTask(taskData);
+        console.log("API response:", response.data); // Debug log
+
         const createdTask = convertApiTaskToFrontend(response.data);
 
         setTasks((prev) => [...prev, createdTask]);
@@ -351,93 +359,117 @@ const TasksView: React.FC = () => {
         elevation={2}
         sx={{ background: "linear-gradient(145deg, #1a1f35 0%, #242b42 100%)" }}
       >
-        <List>
-          {getFilteredTasks().map((task, index) => (
-            <ListItem
-              key={task.id}
-              sx={{
-                borderBottom:
-                  index < getFilteredTasks().length - 1
-                    ? "1px solid rgba(255, 255, 255, 0.1)"
-                    : "none",
-                "&:hover": {
-                  backgroundColor: "rgba(0, 212, 255, 0.05)",
-                },
-              }}
-            >
-              <Checkbox
-                icon={<RadioButtonUncheckedIcon />}
-                checkedIcon={<CheckCircleIcon />}
-                checked={task.completed}
-                onChange={() => handleTaskComplete(task.id)}
+        {getFilteredTasks().length === 0 ? (
+          <Box sx={{ textAlign: "center", py: 8 }}>
+            <CheckCircleIcon
+              sx={{ fontSize: 64, color: "success.main", mb: 2, opacity: 0.5 }}
+            />
+            <Typography variant="h6" color="text.secondary">
+              {activeTab === 0
+                ? "No tasks found"
+                : activeTab === 1
+                ? "No pending tasks"
+                : activeTab === 2
+                ? "No completed tasks"
+                : "No high priority tasks"}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              {activeTab === 0 && "Create your first task to get started!"}
+            </Typography>
+          </Box>
+        ) : (
+          <List>
+            {getFilteredTasks().map((task, index) => (
+              <ListItem
+                key={task.id}
                 sx={{
-                  color: getPriorityColor(task.priority) + ".main",
-                  "&.Mui-checked": {
-                    color: "success.main",
+                  borderBottom:
+                    index < getFilteredTasks().length - 1
+                      ? "1px solid rgba(255, 255, 255, 0.1)"
+                      : "none",
+                  "&:hover": {
+                    backgroundColor: "rgba(0, 212, 255, 0.05)",
                   },
                 }}
-              />
+              >
+                <Checkbox
+                  icon={<RadioButtonUncheckedIcon />}
+                  checkedIcon={<CheckCircleIcon />}
+                  checked={task.completed}
+                  onChange={() => handleTaskComplete(task.id)}
+                  sx={{
+                    color: getPriorityColor(task.priority) + ".main",
+                    "&.Mui-checked": {
+                      color: "success.main",
+                    },
+                  }}
+                />
 
-              <ListItemText
-                primary={
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 1,
-                      mb: 0.5,
-                    }}
-                  >
-                    <Typography
-                      variant="h6"
+                <ListItemText
+                  primary={
+                    <Box
                       sx={{
-                        fontWeight: 500,
-                        textDecoration: task.completed
-                          ? "line-through"
-                          : "none",
-                        opacity: task.completed ? 0.6 : 1,
-                        fontSize: "1.1rem",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        mb: 0.5,
                       }}
                     >
-                      {task.title}
-                    </Typography>
-                    <Chip
-                      label={task.priority}
-                      size="small"
-                      color={getPriorityColor(task.priority)}
-                      sx={{ fontSize: "0.75rem" }}
-                    />
-                  </Box>
-                }
-                secondary={
-                  <Box>
-                    {task.description && (
                       <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{ mb: 0.5 }}
+                        variant="h6"
+                        sx={{
+                          fontWeight: 500,
+                          textDecoration: task.completed
+                            ? "line-through"
+                            : "none",
+                          opacity: task.completed ? 0.6 : 1,
+                          fontSize: "1.1rem",
+                        }}
                       >
-                        {task.description}
+                        {task.title}
                       </Typography>
-                    )}
-                    {task.dueDate && (
-                      <Typography variant="caption" color="text.secondary">
-                        {formatDueDate(task.dueDate)}
-                      </Typography>
-                    )}
-                  </Box>
-                }
-              />
+                      <Chip
+                        label={task.priority}
+                        size="small"
+                        color={getPriorityColor(task.priority)}
+                        sx={{ fontSize: "0.75rem" }}
+                      />
+                    </Box>
+                  }
+                  secondary={
+                    <Box>
+                      {task.description && (
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ mb: 0.5 }}
+                        >
+                          {task.description}
+                        </Typography>
+                      )}
+                      {task.dueDate && (
+                        <Typography variant="caption" color="text.secondary">
+                          {formatDueDate(task.dueDate)}
+                        </Typography>
+                      )}
+                    </Box>
+                  }
+                />
 
-              <IconButton
-                color="error"
-                sx={{ opacity: 0.7, "&:hover": { opacity: 1 } }}
-              >
-                <DeleteIcon />
-              </IconButton>
-            </ListItem>
-          ))}
-        </List>
+                <IconButton
+                  color="error"
+                  sx={{ opacity: 0.7, "&:hover": { opacity: 1 } }}
+                  onClick={() => {
+                    // TODO: Implement task deletion
+                    console.log("Delete task:", task.id);
+                  }}
+                >
+                  <DeleteIcon />
+                </IconButton>
+              </ListItem>
+            ))}
+          </List>
+        )}
       </Paper>
 
       {/* New Task Dialog */}
@@ -463,6 +495,7 @@ const TasksView: React.FC = () => {
                 setNewTask((prev) => ({ ...prev, title: e.target.value }))
               }
               required
+              autoFocus
             />
 
             <TextField
@@ -474,6 +507,7 @@ const TasksView: React.FC = () => {
               onChange={(e) =>
                 setNewTask((prev) => ({ ...prev, description: e.target.value }))
               }
+              placeholder="Optional task description..."
             />
 
             <FormControl fullWidth>
@@ -503,17 +537,23 @@ const TasksView: React.FC = () => {
                 setNewTask((prev) => ({ ...prev, dueDate: e.target.value }))
               }
               InputLabelProps={{ shrink: true }}
+              helperText="Optional - leave blank for no due date"
             />
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
-          <Button onClick={handleCancelNewTask}>Cancel</Button>
+          <Button onClick={handleCancelNewTask} color="inherit">
+            Cancel
+          </Button>
           <Button
             onClick={handleSaveNewTask}
             variant="contained"
             disabled={!newTask.title.trim()}
             sx={{
               background: "linear-gradient(135deg, #00d4ff 0%, #0095cc 100%)",
+              "&:hover": {
+                background: "linear-gradient(135deg, #4de6ff 0%, #00d4ff 100%)",
+              },
             }}
           >
             Create Task

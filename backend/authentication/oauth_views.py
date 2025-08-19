@@ -1,14 +1,18 @@
 # backend/authentication/oauth_views.py
 import json
+import requests
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
 from django.conf import settings
+from .models import GoogleToken
+from datetime import datetime, timedelta
+from django.utils import timezone
 
 
 @api_view(["POST"])
@@ -84,6 +88,14 @@ def google_oauth(request):
         # Create or get auth token
         token, token_created = Token.objects.get_or_create(user=user)
 
+        # Check if user has Google services access
+        has_google_services = False
+        try:
+            google_token = GoogleToken.objects.get(user=user)
+            has_google_services = True
+        except GoogleToken.DoesNotExist:
+            has_google_services = False
+
         return Response(
             {
                 "success": True,
@@ -98,6 +110,7 @@ def google_oauth(request):
                     "username": user.username,
                 },
                 "created": created,
+                "has_google_services": has_google_services,
             }
         )
 
@@ -111,4 +124,109 @@ def google_oauth(request):
         return Response(
             {"error": "Authentication failed", "detail": str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def authorize_google_services(request):
+    """
+    Authorize Google services (Gmail, Calendar) using frontend-obtained authorization code
+    This endpoint receives an authorization code and exchanges it for access tokens
+    """
+    try:
+        auth_code = request.data.get("authorization_code")
+        if not auth_code:
+            return Response(
+                {"error": "Authorization code is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Exchange authorization code for tokens
+        token_url = "https://oauth2.googleapis.com/token"
+        token_data = {
+            "client_id": settings.GOOGLE_OAUTH2_CLIENT_ID,
+            "client_secret": settings.GOOGLE_OAUTH2_CLIENT_SECRET,
+            "code": auth_code,
+            "grant_type": "authorization_code",
+            "redirect_uri": "postmessage",  # Special redirect URI for client-side flows
+        }
+
+        token_response = requests.post(token_url, data=token_data)
+        token_json = token_response.json()
+
+        if "access_token" not in token_json:
+            return Response(
+                {"error": "Failed to exchange code for tokens", "details": token_json},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Calculate token expiry
+        expires_at = None
+        if "expires_in" in token_json:
+            expires_at = timezone.now() + timedelta(seconds=token_json["expires_in"])
+
+        # Store or update Google tokens
+        google_token, created = GoogleToken.objects.update_or_create(
+            user=request.user,
+            defaults={
+                "access_token": token_json["access_token"],
+                "refresh_token": token_json.get("refresh_token"),
+                "token_expires_at": expires_at,
+                "scope": token_json.get("scope", ""),
+            },
+        )
+
+        return Response(
+            {
+                "success": True,
+                "message": "Google services authorized successfully",
+                "has_gmail": "gmail" in token_json.get("scope", "").lower(),
+                "has_calendar": "calendar" in token_json.get("scope", "").lower(),
+                "scopes": token_json.get("scope", "").split(),
+            }
+        )
+
+    except Exception as e:
+        print(f"Google services authorization error: {e}")
+        return Response(
+            {"error": f"Failed to authorize Google services: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def google_services_status(request):
+    """
+    Check if user has authorized Google services
+    """
+    try:
+        google_token = GoogleToken.objects.get(user=request.user)
+
+        # Check if token is still valid
+        is_valid = True
+        if google_token.token_expires_at:
+            is_valid = timezone.now() < google_token.token_expires_at
+
+        return Response(
+            {
+                "has_google_services": True,
+                "is_token_valid": is_valid,
+                "scopes": google_token.scope.split() if google_token.scope else [],
+                "expires_at": (
+                    google_token.token_expires_at.isoformat()
+                    if google_token.token_expires_at
+                    else None
+                ),
+            }
+        )
+    except GoogleToken.DoesNotExist:
+        return Response(
+            {
+                "has_google_services": False,
+                "is_token_valid": False,
+                "scopes": [],
+                "expires_at": None,
+            }
         )

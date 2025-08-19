@@ -1,7 +1,7 @@
 # backend/authentication/urls.py
 from django.urls import path
 from . import views
-from .oauth_views import google_oauth  # Import the client-side OAuth function
+from .oauth_views import google_oauth, authorize_google_services, google_services_status
 
 app_name = "authentication"
 
@@ -10,9 +10,15 @@ urlpatterns = [
     path("register/", views.register, name="register"),
     path("logout/", views.logout, name="logout"),
     path("profile/", views.user_profile, name="profile"),
-    # OAuth URLs - Now using client-side OAuth only
-    path("google/", google_oauth, name="google_oauth_client"),  # Client-side OAuth endpoint
-    # Remove or comment out the server-side redirect OAuth endpoints:
-    # path("google/", views.google_oauth, name="google_oauth"),
-    # path("google/callback/", views.google_oauth_callback, name="google_oauth_callback"),
+    # OAuth URLs - Client-side OAuth
+    path("google/", google_oauth, name="google_oauth_client"),
+    # Google Services Authorization (separate from login)
+    path(
+        "google/authorize-services/",
+        authorize_google_services,
+        name="authorize_google_services",
+    ),
+    path(
+        "google/services-status/", google_services_status, name="google_services_status"
+    ),
 ]

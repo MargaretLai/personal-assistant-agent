@@ -65,9 +65,17 @@ export const authAPI = {
 
   getProfile: () => apiClient.get("/auth/profile/"),
 
-  // NEW: Client-side Google OAuth method
+  // Client-side Google OAuth method
   googleOAuth: (data: { id_token: string }) =>
     apiClient.post("/auth/google/", data),
+
+  // NEW: Google Services Authorization
+  authorizeGoogleServices: (data: { authorization_code: string }) =>
+    apiClient.post("/auth/google/authorize-services/", data),
+
+  // NEW: Check Google Services Status
+  checkGoogleServicesStatus: () =>
+    apiClient.get("/auth/google/services-status/"),
 };
 
 // Calendar API calls
@@ -213,11 +221,5 @@ export const clearAuthToken = () => {
   localStorage.removeItem("auth_token");
   delete apiClient.defaults.headers.Authorization;
 };
-
-// // For development: Set your token automatically
-// // TODO: Remove this in production and implement proper login
-// if (process.env.NODE_ENV === "development") {
-//   setAuthToken("ec2142ff3feb160343cfd2d093562c28d3779e1e"); // Your token
-// }
 
 export default apiClient;

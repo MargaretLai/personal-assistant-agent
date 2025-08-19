@@ -9,6 +9,7 @@ import ChatInterface from "./chat/ChatInterface";
 import CalendarView from "./calendar/CalendarView";
 import TasksView from "./tasks/TasksView";
 import EmailView from "./email/EmailView";
+import GoogleServicesAuth from "./auth/GoogleServicesAuth";
 
 const AuthenticatedApp: React.FC = () => {
   const { isAuthenticated, loading } = useAuth();
@@ -69,6 +70,16 @@ const AuthenticatedApp: React.FC = () => {
       {/* Navigation */}
       <Box sx={{ p: 2, pb: 0 }}>
         <NavigationTabs activeTab={activeTab} onTabChange={setActiveTab} />
+      </Box>
+
+      {/* Google Services Authorization - Shows on all tabs */}
+      <Box sx={{ px: 2 }}>
+        <GoogleServicesAuth
+          onAuthorizationComplete={() => {
+            // Refresh the page to reload Gmail/Calendar data
+            window.location.reload();
+          }}
+        />
       </Box>
 
       {/* Main Content */}
