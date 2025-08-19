@@ -10,6 +10,7 @@ import CalendarView from "./calendar/CalendarView";
 import TasksView from "./tasks/TasksView";
 import EmailView from "./email/EmailView";
 import GoogleServicesAuth from "./auth/GoogleServicesAuth";
+import Footer from "./layout/Footer";
 
 const AuthenticatedApp: React.FC = () => {
   const { isAuthenticated, loading } = useAuth();
@@ -66,7 +67,7 @@ const AuthenticatedApp: React.FC = () => {
   };
 
   return (
-    <Box sx={{ minHeight: "100vh" }}>
+    <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       {/* Navigation */}
       <Box sx={{ p: 2, pb: 0 }}>
         <NavigationTabs activeTab={activeTab} onTabChange={setActiveTab} />
@@ -83,7 +84,10 @@ const AuthenticatedApp: React.FC = () => {
       </Box>
 
       {/* Main Content */}
-      {renderActiveView()}
+      <Box sx={{ flex: 1 }}>{renderActiveView()}</Box>
+
+      {/* Footer */}
+      <Footer />
     </Box>
   );
 };

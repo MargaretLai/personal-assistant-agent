@@ -13,6 +13,7 @@ import AuthenticatedApp from "./components/AuthenticatedApp";
 import LoginPage from "./components/auth/LoginPage";
 import AuthSuccess from "./components/auth/AuthSuccess";
 import AuthError from "./components/auth/AuthError";
+import PrivacyPolicy from "./components/legal/PrivacyPolicy";
 
 const darkTheme = createTheme({
   palette: {
@@ -108,6 +109,7 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/auth/success" element={<AuthSuccess />} />
             <Route path="/auth/error" element={<AuthError />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/*" element={<AuthenticatedApp />} />
           </Routes>
         </Router>

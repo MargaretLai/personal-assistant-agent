@@ -8,9 +8,10 @@ import {
   Container,
   Stack,
   Alert,
+  Link,
 } from "@mui/material";
 import GoogleIcon from "@mui/icons-material/Google";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link as RouterLink } from "react-router-dom";
 import { authAPI } from "../../services/apiService";
 import { useAuth } from "../../contexts/AuthContext"; // Import useAuth
 
@@ -119,6 +120,7 @@ const LoginPage: React.FC = () => {
         sx={{
           minHeight: "100vh",
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
         }}
@@ -165,9 +167,30 @@ const LoginPage: React.FC = () => {
             <div id="google-signin-button" style={{ minHeight: "44px" }}></div>
           </Stack>
         </Paper>
+
+        {/* Footer with Privacy Policy link */}
+        <Box sx={{ mt: 4, textAlign: "center" }}>
+          <Typography variant="body2" color="text.secondary">
+            © {new Date().getFullYear()} Personal AI Assistant
+          </Typography>
+          <Link
+            component={RouterLink}
+            to="/privacy-policy"
+            variant="body2"
+            sx={{
+              color: "primary.main",
+              textDecoration: "none",
+              "&:hover": {
+                textDecoration: "underline",
+              },
+              mt: 1,
+              display: "block",
+            }}
+          >
+            Privacy Policy
+          </Link>
+        </Box>
       </Box>
     </Container>
   );
 };
-
-export default LoginPage;
