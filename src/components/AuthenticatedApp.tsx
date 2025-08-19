@@ -72,8 +72,8 @@ const AuthenticatedApp: React.FC = () => {
         <NavigationTabs activeTab={activeTab} onTabChange={setActiveTab} />
       </Box>
 
-      {/* Google Services Authorization - Shows on all tabs */}
-      <Box sx={{ px: 2 }}>
+      {/* Google Services Authorization - Only shows if needed, with proper spacing */}
+      <Box sx={{ px: 2, pt: 2 }}>
         <GoogleServicesAuth
           onAuthorizationComplete={() => {
             // Refresh the page to reload Gmail/Calendar data

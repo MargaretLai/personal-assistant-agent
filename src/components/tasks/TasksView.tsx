@@ -116,32 +116,49 @@ const TasksView: React.FC = () => {
 
   const handleTaskComplete = async (taskId: string) => {
     try {
-      // Call API to mark task as complete
-      await tasksAPI.markComplete(parseInt(taskId));
+      const task = tasks.find((t) => t.id === taskId);
+      if (!task) return;
+
+      const wasCompleted = task.completed;
+      const newCompletedState = !wasCompleted;
+
+      // Update task via API
+      const taskData = convertFrontendTaskToApi({
+        ...task,
+        completed: newCompletedState,
+      });
+
+      await tasksAPI.updateTask(parseInt(taskId), taskData);
 
       // Update local state
       setTasks((prevTasks) =>
-        prevTasks.map((task) =>
-          task.id === taskId ? { ...task, completed: true } : task
+        prevTasks.map((t) =>
+          t.id === taskId ? { ...t, completed: newCompletedState } : t
         )
       );
 
-      // Update stats
-      setTaskStats((prev) => ({
-        ...prev,
-        completed: prev.completed + 1,
-        pending: prev.pending - 1,
-        completion_rate: Math.round(((prev.completed + 1) / prev.total) * 100),
-      }));
+      // Update stats correctly
+      setTaskStats((prev) => {
+        const completedChange = newCompletedState ? 1 : -1;
+        const pendingChange = newCompletedState ? -1 : 1;
+        const newCompleted = prev.completed + completedChange;
+        const newPending = prev.pending + pendingChange;
 
-      const completedTask = tasks.find((task) => task.id === taskId);
-      if (completedTask) {
-        setSnackbarMessage(`Task "${completedTask.title}" completed!`);
-        setSnackbarOpen(true);
-      }
+        return {
+          ...prev,
+          completed: newCompleted,
+          pending: newPending,
+          completion_rate:
+            prev.total > 0 ? Math.round((newCompleted / prev.total) * 100) : 0,
+        };
+      });
+
+      const actionText = newCompletedState ? "completed" : "marked as pending";
+      setSnackbarMessage(`Task "${task.title}" ${actionText}!`);
+      setSnackbarOpen(true);
     } catch (error) {
-      console.error("Error completing task:", error);
-      setSnackbarMessage("Failed to complete task. Please try again.");
+      console.error("Error updating task:", error);
+      setSnackbarMessage("Failed to update task. Please try again.");
       setSnackbarOpen(true);
     }
   };
@@ -234,10 +251,10 @@ const TasksView: React.FC = () => {
       await tasksAPI.deleteTask(parseInt(taskId));
 
       // Remove task from local state
+      const deletedTask = tasks.find((task) => task.id === taskId);
       setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
 
       // Update stats
-      const deletedTask = tasks.find((task) => task.id === taskId);
       if (deletedTask) {
         setTaskStats((prev) => ({
           ...prev,

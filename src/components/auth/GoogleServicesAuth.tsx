@@ -118,13 +118,26 @@ const GoogleServicesAuth: React.FC<GoogleServicesAuthProps> = ({
     }
   };
 
+  // Check if user has all the required services authorized
+  const hasRequiredServices = () => {
+    const requiredScopes = [
+      "https://www.googleapis.com/auth/gmail.readonly",
+      "https://www.googleapis.com/auth/gmail.send",
+      "https://www.googleapis.com/auth/gmail.modify",
+      "https://www.googleapis.com/auth/calendar",
+    ];
+
+    return requiredScopes.every((scope) => scopes.includes(scope));
+  };
+
+  // Don't render if checking status
   if (checkingStatus) {
-    return (
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        <CircularProgress size={20} />
-        <Typography variant="body2">Checking Google services...</Typography>
-      </Box>
-    );
+    return null; // Don't show anything while checking
+  }
+
+  // Don't render if user has all required services
+  if (hasServices && hasRequiredServices()) {
+    return null; // Hide completely when fully authorized
   }
 
   return (
@@ -145,17 +158,15 @@ const GoogleServicesAuth: React.FC<GoogleServicesAuthProps> = ({
         </Alert>
       )}
 
-      {hasServices ? (
+      {hasServices && !hasRequiredServices() ? (
         <Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-            <CheckCircleIcon color="success" />
-            <Typography color="success.main">
-              Google services are authorized
-            </Typography>
-          </Box>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Some Google services need additional authorization for full
+            functionality.
+          </Alert>
 
           <Typography variant="body2" sx={{ mb: 1 }}>
-            Authorized services:
+            Currently authorized:
           </Typography>
 
           <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 2 }}>
@@ -174,21 +185,21 @@ const GoogleServicesAuth: React.FC<GoogleServicesAuthProps> = ({
           </Stack>
 
           <Button
-            variant="outlined"
-            size="small"
+            variant="contained"
+            startIcon={<GoogleIcon />}
             onClick={requestAuthorization}
             disabled={loading}
             sx={{ textTransform: "none" }}
           >
-            {loading ? "Re-authorizing..." : "Re-authorize Services"}
+            {loading ? "Authorizing..." : "Complete Authorization"}
           </Button>
         </Box>
       ) : (
         <Box>
-          <Typography variant="body2" sx={{ mb: 2 }}>
+          <Alert severity="info" sx={{ mb: 2 }}>
             To access Gmail and Calendar features, please authorize Google
-            services:
-          </Typography>
+            services.
+          </Alert>
 
           <Button
             variant="contained"
