@@ -32,9 +32,9 @@ const AuthenticatedApp: React.FC = () => {
     );
   }
 
-  // Redirect to login if not authenticated
+  // Redirect to home page if not authenticated (instead of login)
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   const renderActiveView = () => {

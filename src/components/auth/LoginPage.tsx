@@ -75,8 +75,8 @@ const LoginPage: React.FC = () => {
         // Use the context login function instead of manual localStorage
         login(result.data.token, result.data.user);
 
-        // Redirect to dashboard
-        navigate("/");
+        // Redirect to app
+        navigate("/app");
       } else {
         throw new Error("Authentication failed");
       }

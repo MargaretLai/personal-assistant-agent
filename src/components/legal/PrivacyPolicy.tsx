@@ -20,11 +20,11 @@ const PrivacyPolicy: React.FC = () => {
   const { isAuthenticated } = useAuth();
 
   const handleBackClick = () => {
-    // If user is authenticated, go to app, otherwise go to login
+    // If user is authenticated, go to app, otherwise go to home page
     if (isAuthenticated) {
-      navigate("/");
+      navigate("/app");
     } else {
-      navigate("/login");
+      navigate("/");
     }
   };
 
@@ -35,7 +35,7 @@ const PrivacyPolicy: React.FC = () => {
         onClick={handleBackClick}
         sx={{ mb: 3 }}
       >
-        {isAuthenticated ? "Back to App" : "Back to Login"}
+        {isAuthenticated ? "Back to App" : "Back to Home"}
       </Button>
 
       <Paper elevation={2} sx={{ p: 4 }}>

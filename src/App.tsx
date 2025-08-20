@@ -9,6 +9,7 @@ import {
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import { AuthProvider } from "./contexts/AuthContext";
+import HomePage from "./components/HomePage";
 import AuthenticatedApp from "./components/AuthenticatedApp";
 import LoginPage from "./components/auth/LoginPage";
 import AuthSuccess from "./components/auth/AuthSuccess";
@@ -106,11 +107,24 @@ function App() {
       <AuthProvider>
         <Router>
           <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<HomePage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+
+            {/* Auth Routes */}
             <Route path="/auth/success" element={<AuthSuccess />} />
             <Route path="/auth/error" element={<AuthError />} />
-            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-            <Route path="/*" element={<AuthenticatedApp />} />
+
+            {/* Protected Routes */}
+            <Route path="/app/*" element={<AuthenticatedApp />} />
+            <Route path="/dashboard/*" element={<AuthenticatedApp />} />
+
+            {/* Redirect old paths to new structure */}
+            <Route path="/chat" element={<Navigate to="/app" replace />} />
+            <Route path="/calendar" element={<Navigate to="/app" replace />} />
+            <Route path="/tasks" element={<Navigate to="/app" replace />} />
+            <Route path="/emails" element={<Navigate to="/app" replace />} />
           </Routes>
         </Router>
       </AuthProvider>
