@@ -192,7 +192,7 @@ const HomePage: React.FC = () => {
 
           <Grid container spacing={4}>
             {features.map((feature, index) => (
-              <Grid item xs={12} md={6} key={index}>
+              <Grid key={index} item xs={12} md={6}>
                 <Card
                   elevation={2}
                   sx={{
@@ -251,7 +251,7 @@ const HomePage: React.FC = () => {
 
           <Grid container spacing={4} justifyContent="center">
             {benefits.map((benefit, index) => (
-              <Grid item xs={12} sm={6} md={4} key={index}>
+              <Grid key={index} item xs={12} sm={6} md={4}>
                 <Box sx={{ textAlign: "center" }}>
                   <Box sx={{ mb: 2 }}>{benefit.icon}</Box>
                   <Typography
