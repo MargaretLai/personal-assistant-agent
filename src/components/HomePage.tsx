@@ -6,7 +6,6 @@ import {
   Typography,
   Button,
   Paper,
-  Grid2 as Grid,
   Card,
   CardContent,
   Chip,
@@ -190,9 +189,15 @@ const HomePage: React.FC = () => {
             Everything You Need in One Place
           </Typography>
 
-          <Grid container spacing={4}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+              gap: 4,
+            }}
+          >
             {features.map((feature, index) => (
-              <Grid key={index} xs={12} md={6}>
+              <Box key={index}>
                 <Card
                   elevation={2}
                   sx={{
@@ -224,9 +229,9 @@ const HomePage: React.FC = () => {
                     </Box>
                   </CardContent>
                 </Card>
-              </Grid>
+              </Box>
             ))}
-          </Grid>
+          </Box>
         </Box>
 
         {/* Benefits Section */}
@@ -249,9 +254,20 @@ const HomePage: React.FC = () => {
             Why Choose Our Assistant?
           </Typography>
 
-          <Grid container spacing={4} justifyContent="center">
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "1fr",
+                sm: "1fr 1fr",
+                md: "1fr 1fr 1fr",
+              },
+              gap: 4,
+              justifyContent: "center",
+            }}
+          >
             {benefits.map((benefit, index) => (
-              <Grid key={index} xs={12} sm={6} md={4}>
+              <Box key={index} sx={{ textAlign: "center" }}>
                 <Box sx={{ textAlign: "center" }}>
                   <Box sx={{ mb: 2 }}>{benefit.icon}</Box>
                   <Typography
@@ -265,9 +281,9 @@ const HomePage: React.FC = () => {
                     {benefit.description}
                   </Typography>
                 </Box>
-              </Grid>
+              </Box>
             ))}
-          </Grid>
+          </Box>
         </Paper>
 
         {/* CTA Section */}
