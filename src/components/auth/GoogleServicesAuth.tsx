@@ -5,13 +5,11 @@ import {
   Button,
   Typography,
   Alert,
-  CircularProgress,
   Chip,
   Paper,
   Stack,
 } from "@mui/material";
 import GoogleIcon from "@mui/icons-material/Google";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { authAPI } from "../../services/apiService";
 
 declare global {

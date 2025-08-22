@@ -1,5 +1,5 @@
 // src/components/auth/LoginPage.tsx
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback } from "react";
 import {
   Box,
   Paper,
@@ -27,6 +27,55 @@ const LoginPage: React.FC = () => {
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
 
+  // ✅ Wrap handleCredentialResponse in useCallback to prevent re-creation
+  const handleCredentialResponse = useCallback(
+    async (response: any) => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Send the ID token to your backend
+        const result = await authAPI.googleOAuth({
+          id_token: response.credential,
+        });
+
+        if (result.data.success) {
+          console.log("Login successful:", result.data.user);
+
+          // Use the context login function instead of manual localStorage
+          login(result.data.token, result.data.user);
+
+          // Redirect to app
+          navigate("/app");
+        } else {
+          throw new Error("Authentication failed");
+        }
+      } catch (error: any) {
+        console.error("Google OAuth error:", error);
+        setError(
+          error.response?.data?.error ||
+            "Authentication failed. Please try again."
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [login, navigate, setLoading, setError]
+  ); // Include all dependencies
+
+  // ✅ Now initializeGoogleSignIn can safely depend on handleCredentialResponse
+  const initializeGoogleSignIn = useCallback(() => {
+    if (window.google) {
+      window.google.accounts.id.initialize({
+        client_id:
+          "877747705316-c5sc7jshsn91l5ojaeemce2clh5rr29e.apps.googleusercontent.com",
+        callback: handleCredentialResponse,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+    }
+  }, [handleCredentialResponse]); // Now handleCredentialResponse is stable
+
   useEffect(() => {
     // Load Google Identity Services
     const script = document.createElement("script");
@@ -45,51 +94,7 @@ const LoginPage: React.FC = () => {
         document.head.removeChild(existingScript);
       }
     };
-  }, []);
-
-  const initializeGoogleSignIn = () => {
-    if (window.google) {
-      window.google.accounts.id.initialize({
-        client_id:
-          "877747705316-c5sc7jshsn91l5ojaeemce2clh5rr29e.apps.googleusercontent.com",
-        callback: handleCredentialResponse,
-        auto_select: false,
-        cancel_on_tap_outside: true,
-      });
-    }
-  };
-
-  const handleCredentialResponse = async (response: any) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Send the ID token to your backend
-      const result = await authAPI.googleOAuth({
-        id_token: response.credential,
-      });
-
-      if (result.data.success) {
-        console.log("Login successful:", result.data.user);
-
-        // Use the context login function instead of manual localStorage
-        login(result.data.token, result.data.user);
-
-        // Redirect to app
-        navigate("/app");
-      } else {
-        throw new Error("Authentication failed");
-      }
-    } catch (error: any) {
-      console.error("Google OAuth error:", error);
-      setError(
-        error.response?.data?.error ||
-          "Authentication failed. Please try again."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [initializeGoogleSignIn]);
 
   const handleGoogleSignIn = () => {
     setError(null);

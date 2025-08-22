@@ -29,11 +29,8 @@ import AddIcon from "@mui/icons-material/Add";
 import MarkEmailReadIcon from "@mui/icons-material/MarkEmailRead";
 import MarkEmailUnreadIcon from "@mui/icons-material/MarkEmailUnread";
 import ReplyIcon from "@mui/icons-material/Reply";
-import DeleteIcon from "@mui/icons-material/Delete";
-import AttachFileIcon from "@mui/icons-material/AttachFile";
 import EmailIcon from "@mui/icons-material/Email";
 import InboxIcon from "@mui/icons-material/Inbox";
-import StarIcon from "@mui/icons-material/Star";
 import SendIcon from "@mui/icons-material/Send";
 import CloseIcon from "@mui/icons-material/Close";
 
@@ -236,7 +233,7 @@ const EmailView: React.FC = () => {
     const nameMatch = sender.match(/^([^<]+)</);
     const name = nameMatch ? nameMatch[1].trim() : sender.split("@")[0];
 
-    const parts = name.split(/[\s\.]+/);
+    const parts = name.split(/[\s.]+/);
     if (parts.length >= 2) {
       return (parts[0][0] + parts[1][0]).toUpperCase();
     }

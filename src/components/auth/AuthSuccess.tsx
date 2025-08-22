@@ -1,5 +1,5 @@
 // src/components/auth/AuthSuccess.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Box, CircularProgress, Typography, Alert } from "@mui/material";
 import { useAuth } from "../../contexts/AuthContext";
@@ -10,60 +10,61 @@ const AuthSuccess: React.FC = () => {
   const { login } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
+  const fetchUserProfile = useCallback(
+    async (token: string, userId: number) => {
+      try {
+        const response = await fetch(
+          "http://localhost:8000/api/v1/auth/profile/",
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Token ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (response.ok) {
+          const userData = await response.json();
+          console.log("User data:", userData);
+
+          login(token, userData);
+          navigate("/app");
+        } else {
+          const basicUser = {
+            user_id: userId,
+            username: `user_${userId}`,
+            email: "user@example.com",
+            first_name: "",
+            last_name: "",
+          };
+
+          login(token, basicUser);
+          navigate("/app");
+        }
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+        setError("Failed to complete authentication");
+        setTimeout(() => navigate("/auth/error"), 2000);
+      }
+    },
+    [login, navigate]
+  ); // Only depend on login and navigate
+
   useEffect(() => {
     const token = searchParams.get("token");
     const userId = searchParams.get("user_id");
 
-    console.log("URL params:", { token, userId }); // Debug log
-    console.log("Full URL:", window.location.href); // Debug log
+    console.log("URL params:", { token, userId });
+    console.log("Full URL:", window.location.href);
 
     if (token && userId) {
-      // Fetch user profile with the token
       fetchUserProfile(token, parseInt(userId));
     } else {
       setError("Missing authentication parameters");
       setTimeout(() => navigate("/auth/error"), 2000);
     }
-  }, [searchParams, login, navigate]);
-
-  const fetchUserProfile = async (token: string, userId: number) => {
-    try {
-      const response = await fetch(
-        "http://localhost:8000/api/v1/auth/profile/",
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Token ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (response.ok) {
-        const userData = await response.json();
-        console.log("User data:", userData); // Debug log
-
-        login(token, userData);
-        navigate("/app"); // Changed from '/' to '/app'
-      } else {
-        // If profile fetch fails, create basic user object
-        const basicUser = {
-          user_id: userId,
-          username: `user_${userId}`,
-          email: "user@example.com",
-          first_name: "",
-          last_name: "",
-        };
-
-        login(token, basicUser);
-        navigate("/app"); // Changed from '/' to '/app'
-      }
-    } catch (error) {
-      console.error("Error fetching user profile:", error);
-      setError("Failed to complete authentication");
-      setTimeout(() => navigate("/auth/error"), 2000);
-    }
-  };
+  }, [searchParams, fetchUserProfile, navigate]); // ✅ Added navigate to dependencies
 
   if (error) {
     return (

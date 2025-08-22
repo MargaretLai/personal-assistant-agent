@@ -144,6 +144,17 @@ const CalendarView: React.FC = () => {
     setShowNewEventDialog(true);
   };
 
+  const refreshEvents = async () => {
+    try {
+      const response = await calendarAPI.getEvents();
+      const apiEvents = response.data.results;
+      const convertedEvents = apiEvents.map(convertApiEventToFrontend);
+      setEvents(convertedEvents);
+    } catch (err) {
+      console.error("Error refreshing events:", err);
+    }
+  };
+
   const handleSaveNewEvent = async () => {
     if (newEvent.title.trim()) {
       try {
@@ -166,7 +177,7 @@ const CalendarView: React.FC = () => {
               : [],
           };
 
-          const response = await calendarAPI.createGoogleEvent(googleEventData);
+          await calendarAPI.createGoogleEvent(googleEventData);
 
           setSnackbarMessage(
             `Google Calendar event "${newEvent.title}" created successfully!`
@@ -211,17 +222,6 @@ const CalendarView: React.FC = () => {
         });
 
         // Refresh events
-        const refreshEvents = async () => {
-          try {
-            const response = await calendarAPI.getEvents();
-            const apiEvents = response.data.results;
-            const convertedEvents = apiEvents.map(convertApiEventToFrontend);
-            setEvents(convertedEvents);
-          } catch (err) {
-            console.error("Error refreshing events:", err);
-          }
-        };
-
         refreshEvents();
       } catch (error: any) {
         console.error("Error creating event:", error);
@@ -291,17 +291,6 @@ const CalendarView: React.FC = () => {
       handleEventMenuClose();
 
       // Refresh events
-      const refreshEvents = async () => {
-        try {
-          const response = await calendarAPI.getEvents();
-          const apiEvents = response.data.results;
-          const convertedEvents = apiEvents.map(convertApiEventToFrontend);
-          setEvents(convertedEvents);
-        } catch (err) {
-          console.error("Error refreshing events:", err);
-        }
-      };
-
       refreshEvents();
     } catch (error: any) {
       console.error("Error deleting event:", error);

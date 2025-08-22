@@ -203,6 +203,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "https://accounts.google.com",
     "https://personal-assistant-agent-six.vercel.app",
+    "https://www.ai-assistant-agent-margaretlai.online"
 ]
 # SECURE_SSL_REDIRECT = True
 # SESSION_COOKIE_SECURE = True
