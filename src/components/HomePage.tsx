@@ -143,7 +143,7 @@ const HomePage: React.FC = () => {
             <Button
               variant="outlined"
               size="large"
-              onClick={() => navigate("https://personal-assistant-agent-privacy-po.vercel.app/")}
+              onClick={() => window.open("https://personal-assistant-agent-privacy-po.vercel.app/")}
               sx={{
                 py: 1.5,
                 px: 4,
