@@ -50,7 +50,7 @@ urlpatterns = [
         "google9cec98a809f186e6.html", google_verification, name="google_verification"
     ),
     path(
-        "privacy-policy/",
+        "legal/privacy-policy/",
         TemplateView.as_view(template_name="privacy-policy.html"),
         name="privacy_policy",
     ),

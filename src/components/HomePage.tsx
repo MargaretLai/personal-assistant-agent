@@ -143,7 +143,7 @@ const HomePage: React.FC = () => {
             <Button
               variant="outlined"
               size="large"
-              onClick={() => navigate("/privacy-policy")}
+              onClick={() => navigate("/legal/privacy-policy/")}
               sx={{
                 py: 1.5,
                 px: 4,

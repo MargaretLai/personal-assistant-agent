@@ -24,7 +24,7 @@ const Footer: React.FC = () => {
         </Typography>
         <Link
           component={RouterLink}
-          to="/privacy-policy"
+          to="/legal/privacy-policy/"
           variant="body2"
           sx={{
             color: "primary.main",
