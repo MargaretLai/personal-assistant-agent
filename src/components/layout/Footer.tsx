@@ -24,7 +24,7 @@ const Footer: React.FC = () => {
         </Typography>
         <Link
           component={RouterLink}
-          to="https://personal-assistant-agent-privacy-po.vercel.app/"
+          to="https://ai-assistant-agent-policy-margaretai.online"
           variant="body2"
           sx={{
             color: "primary.main",
