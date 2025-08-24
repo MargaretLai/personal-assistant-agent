@@ -24,7 +24,7 @@ const Footer: React.FC = () => {
         </Typography>
         <Link
           component={RouterLink}
-          to="/legal/privacy-policy/"
+          to="https://personal-assistant-agent-privacy-po.vercel.app/"
           variant="body2"
           sx={{
             color: "primary.main",
