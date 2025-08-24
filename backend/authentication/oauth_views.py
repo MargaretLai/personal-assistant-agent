@@ -1,8 +1,6 @@
 # backend/authentication/oauth_views.py
 import json
 import requests
-from google.auth.transport import requests as google_requests
-from google.oauth2 import id_token
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -14,13 +12,34 @@ from .models import GoogleToken
 from datetime import datetime, timedelta
 from django.utils import timezone
 
+# Try to import Google auth library, fallback if not available
+try:
+    from google.auth.transport import requests as google_requests
+    from google.oauth2 import id_token
 
-@api_view(["POST"])
+    GOOGLE_AUTH_AVAILABLE = True
+except ImportError:
+    GOOGLE_AUTH_AVAILABLE = False
+    print("Google auth library not available, using fallback verification")
+
+
+@api_view(["GET", "POST"])
 @permission_classes([AllowAny])
 def google_oauth(request):
     """
     Handle Google OAuth authentication using ID token (client-side)
     """
+    # Add GET method for testing
+    if request.method == "GET":
+        return Response(
+            {
+                "message": "Google OAuth endpoint is working",
+                "method": "GET",
+                "google_auth_library_available": GOOGLE_AUTH_AVAILABLE,
+                "note": "Send POST with id_token to authenticate",
+            }
+        )
+
     try:
         # Get the ID token from the request
         id_token_str = request.data.get("id_token")
@@ -29,14 +48,43 @@ def google_oauth(request):
                 {"error": "ID token is required"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Verify the ID token
-        idinfo = id_token.verify_oauth2_token(
-            id_token_str, google_requests.Request(), settings.GOOGLE_OAUTH2_CLIENT_ID
-        )
+        # Use Google auth library if available, otherwise use fallback
+        if GOOGLE_AUTH_AVAILABLE:
+            # Verify the ID token using Google's library
+            idinfo = id_token.verify_oauth2_token(
+                id_token_str,
+                google_requests.Request(),
+                settings.GOOGLE_OAUTH2_CLIENT_ID,
+            )
 
-        # Check if the token was issued by Google
-        if idinfo["iss"] not in ["accounts.google.com", "https://accounts.google.com"]:
-            raise ValueError("Wrong issuer.")
+            # Check if the token was issued by Google
+            if idinfo["iss"] not in [
+                "accounts.google.com",
+                "https://accounts.google.com",
+            ]:
+                raise ValueError("Wrong issuer.")
+        else:
+            # Fallback: Verify token using Google's tokeninfo endpoint
+            verify_url = (
+                f"https://oauth2.googleapis.com/tokeninfo?id_token={id_token_str}"
+            )
+
+            try:
+                verify_response = requests.get(verify_url)
+                verify_response.raise_for_status()
+                idinfo = verify_response.json()
+            except requests.RequestException as e:
+                return Response(
+                    {"error": "Failed to verify token with Google"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Check if the token is for our app
+            if idinfo.get("aud") != settings.GOOGLE_OAUTH2_CLIENT_ID:
+                return Response(
+                    {"error": "Token not issued for this application"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         # Extract user information
         email = idinfo.get("email")
@@ -111,6 +159,11 @@ def google_oauth(request):
                 },
                 "created": created,
                 "has_google_services": has_google_services,
+                "verification_method": (
+                    "google_auth_library"
+                    if GOOGLE_AUTH_AVAILABLE
+                    else "tokeninfo_endpoint"
+                ),
             }
         )
 

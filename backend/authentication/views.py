@@ -140,11 +140,54 @@ def user_profile(request):
     )
 
 
-# Google OAuth Views
+# Test endpoints for debugging
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def test_auth_working(request):
+    """Simple test to verify auth endpoints are working"""
+    return Response(
+        {
+            "message": "Auth endpoints are working!",
+            "available_endpoints": [
+                "/api/v1/auth/login/",
+                "/api/v1/auth/register/",
+                "/api/v1/auth/google/",
+                "/api/v1/auth/profile/",
+            ],
+        }
+    )
+
+
+@api_view(["GET", "POST"])
+@permission_classes([AllowAny])
+def google_oauth_simple_test(request):
+    """Simple test for Google OAuth endpoint"""
+    if request.method == "GET":
+        return Response(
+            {
+                "message": "Google OAuth endpoint is accessible",
+                "method": "GET",
+                "note": "Send POST request with id_token to authenticate",
+            }
+        )
+    elif request.method == "POST":
+        id_token = request.data.get("id_token")
+        return Response(
+            {
+                "message": "Google OAuth POST received",
+                "method": "POST",
+                "id_token_received": bool(id_token),
+                "id_token_length": len(id_token) if id_token else 0,
+                "note": "This is just a test - real OAuth logic not implemented",
+            }
+        )
+
+
+# Server-side OAuth flow (if you still want to keep this for alternative flow)
 @csrf_exempt
 @require_http_methods(["GET"])
-def google_oauth(request):
-    """Initiate Google OAuth flow"""
+def google_oauth_redirect_flow(request):
+    """Initiate server-side Google OAuth flow (alternative to client-side)"""
     google_oauth_url = "https://accounts.google.com/o/oauth2/auth"
     params = {
         "client_id": settings.GOOGLE_OAUTH2_CLIENT_ID,
@@ -162,7 +205,7 @@ def google_oauth(request):
 @csrf_exempt
 @require_http_methods(["GET"])
 def google_oauth_callback(request):
-    """Handle Google OAuth callback"""
+    """Handle Google OAuth callback for server-side flow"""
     code = request.GET.get("code")
     if not code:
         return JsonResponse({"error": "Authorization code not provided"}, status=400)
@@ -231,10 +274,6 @@ def google_oauth_callback(request):
         # Redirect to frontend with error
         frontend_url = f"{settings.FRONTEND_URL}/auth/error?error=oauth_failed"
         return redirect(frontend_url)
-
-
-# backend/authentication/views.py
-# Add this new function after your existing imports:
 
 
 def refresh_google_token(user):

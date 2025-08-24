@@ -10,6 +10,11 @@ urlpatterns = [
     path("register/", views.register, name="register"),
     path("logout/", views.logout, name="logout"),
     path("profile/", views.user_profile, name="profile"),
+    # Test endpoints for debugging
+    path("test/", views.test_auth_working, name="test_auth_working"),
+    path(
+        "google-simple-test/", views.google_oauth_simple_test, name="google_simple_test"
+    ),
     # OAuth URLs - Client-side OAuth
     path("google/", google_oauth, name="google_oauth_client"),
     # Google Services Authorization (separate from login)

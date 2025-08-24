@@ -113,7 +113,42 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 20,
 }
 
+# ✅ CORS Configuration - FIXED AND MOVED TO TOP
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://personal-assistant-agent-six.vercel.app",
+    "https://www.ai-assistant-agent-margaretlai.online",
+    "https://ai-assistant-agent-margaretlai.online",
+    # Remove Google domains from CORS - they don't need to make requests to your API
+]
+
 CORS_ALLOW_CREDENTIALS = True
+
+# ✅ Added missing CORS headers and methods
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
+
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
+
+# ✅ Handle preflight requests properly
+CORS_PREFLIGHT_MAX_AGE = 86400
 
 # Internationalization
 LANGUAGE_CODE = "en-us"
@@ -197,14 +232,7 @@ SECRET_KEY_JWT = os.environ.get("SECRET_KEY_JWT", default=SECRET_KEY)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://accounts.google.com",
-    "https://personal-assistant-agent-six.vercel.app",
-    "https://www.ai-assistant-agent-margaretlai.online"
-]
+# SSL/Security settings for production (commented out for debugging)
 # SECURE_SSL_REDIRECT = True
 # SESSION_COOKIE_SECURE = True
 # CSRF_COOKIE_SECURE = True
