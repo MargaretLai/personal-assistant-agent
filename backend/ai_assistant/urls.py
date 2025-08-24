@@ -20,6 +20,7 @@ from django.contrib import admin
 from django.http import HttpResponse, JsonResponse
 from django.urls import path, include
 from django.db import connection
+from django.views.generic import TemplateView
 
 
 def health_check(request):
@@ -47,5 +48,10 @@ urlpatterns = [
     path("db-test/", db_check, name="db_check"),
     path(
         "google9cec98a809f186e6.html", google_verification, name="google_verification"
+    ),
+    path(
+        "privacy-policy/",
+        TemplateView.as_view(template_name="privacy-policy.html"),
+        name="privacy_policy",
     ),
 ]
